@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LPT Log Analyser · Round Trip Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bg:#09090f;--surface:#111118;--surface2:#18181f;--border:#2a2a38;
+    --accent:#00e5ff;--accent2:#7c5cfc;--ok:#00e096;--warn:#ffb830;
+    --danger:#ff4560;--text:#e8e8f0;--muted:#6b6b88;
+    --font-head:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0}
+  .wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 24px 60px}
+
+  /* HEADER */
+  header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 18px;border-bottom:1px solid var(--border);margin-bottom:28px}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:40px;height:40px;border-radius:9px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:grid;place-items:center;font-size:18px;flex-shrink:0}
+  .logo-text{font-family:var(--font-head);font-size:18px;font-weight:800;letter-spacing:-.5px}
+  .logo-text span{color:var(--accent)}
+  .header-meta{color:var(--muted);font-size:11px;text-align:right;line-height:1.9}
+
+  /* CARD */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:18px}
+  .card-title{font-family:var(--font-head);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card-title::before{content:'';display:block;width:3px;height:13px;border-radius:2px;background:var(--accent)}
+
+  /* LOAD GRID */
+  .load-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){.load-grid{grid-template-columns:1fr}}
+  .drop-zone{border:2px dashed var(--border);border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.04)}
+  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-icon{font-size:24px;margin-bottom:6px}
+  .drop-label{color:var(--muted);font-size:12px;line-height:1.6}
+  .drop-label strong{color:var(--text);display:block;font-size:12px;margin-bottom:3px}
+  .file-badge{display:inline-block;margin-top:6px;padding:2px 9px;background:rgba(0,224,150,.1);border:1px solid var(--ok);color:var(--ok);border-radius:20px;font-size:10px}
+  textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:10px;resize:vertical;min-height:80px;outline:none;transition:border-color .2s}
+  textarea:focus{border-color:var(--accent)}
+  textarea::placeholder{color:var(--muted)}
+
+  /* CONTROLS */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+  label.ctrl-label{color:var(--muted);font-size:11px;white-space:nowrap}
+  input[type=number],input[type=text],select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:6px 11px;outline:none;transition:border-color .2s}
+  input[type=number]:focus,input[type=text]:focus,select:focus{border-color:var(--accent)}
+  input[type=number]{width:84px}
+  select{cursor:pointer}
+  select option{background:var(--surface2)}
+  .btn{padding:7px 18px;border-radius:7px;border:none;font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;letter-spacing:.3px}
+  .btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#09090f}
+  .btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-sm{padding:4px 12px;font-size:11px}
+
+  /* ── KPI ROW – fixed overflow ── */
+  .kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:18px}
+  @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+  @media(max-width:700px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 14px 12px;overflow:hidden}
+  .kpi-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Value scales down to fit */
+  .kpi-value{
+    font-family:var(--font-head);font-weight:800;
+    font-size:clamp(14px,2.2vw,24px);   /* ← responsive, never overflows */
+    line-height:1.1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .kpi-value.ok{color:var(--ok)}.kpi-value.warn{color:var(--warn)}.kpi-value.danger{color:var(--danger)}
+  .kpi-sub{color:var(--muted);font-size:9px;margin-top:4px;line-height:1.4}
+
+  /* SERVICE NAME MAPPING PANEL */
+  .mapping-panel{display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+  .mapping-panel.open{display:block}
+  .mapping-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px;margin-top:10px;max-height:260px;overflow-y:auto}
+  .mapping-row{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px}
+  .mapping-raw{color:var(--muted);font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mapping-arrow{color:var(--border);font-size:12px;flex-shrink:0}
+  .mapping-input{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 8px;width:160px;outline:none}
+  .mapping-input:focus{border-color:var(--accent)}
+  .mapping-hint{color:var(--muted);font-size:10px;margin-top:6px;line-height:1.5}
+
+  /* TABLE */
+  .trace-filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .search-box{flex:1;min-width:160px}
+  .traces-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:var(--surface2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1.1px;padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+  thead th:hover{color:var(--accent)}
+  tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;cursor:pointer}
+  tbody tr:hover{background:rgba(0,229,255,.04)}
+  tbody tr.expanded{background:rgba(124,92,252,.07)}
+  tbody td{padding:9px 11px;vertical-align:middle}
+  .trace-id-cell{font-size:11px;color:var(--accent);font-weight:600}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .badge-ok{background:rgba(0,224,150,.12);color:var(--ok);border:1px solid rgba(0,224,150,.3)}
+  .badge-warn{background:rgba(255,184,48,.12);color:var(--warn);border:1px solid rgba(255,184,48,.3)}
+  .badge-danger{background:rgba(255,69,96,.12);color:var(--danger);border:1px solid rgba(255,69,96,.3)}
+  .dur-cell{font-weight:600}
+  .dur-ok{color:var(--ok)}.dur-warn{color:var(--warn)}.dur-danger{color:var(--danger)}
+
+  /* DETAIL */
+  .detail-row td{padding:0!important}
+  .detail-inner{padding:14px 18px 18px;background:var(--surface2);border-top:1px solid var(--border);animation:slideDown .2s ease}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  .detail-title{font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+
+  /* GANTT */
+  .gantt{position:relative;margin-top:8px}
+  .gantt-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;min-height:26px}
+  .gantt-label{width:180px;flex-shrink:0;font-size:10px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gantt-track{flex:1;height:20px;background:var(--surface);border-radius:4px;position:relative;overflow:hidden;border:1px solid var(--border)}
+  .gantt-bar{position:absolute;height:100%;border-radius:4px;display:flex;align-items:center;padding:0 5px;font-size:9px;font-weight:600;white-space:nowrap;overflow:hidden;transition:filter .15s}
+  .gantt-bar:hover{filter:brightness(1.2)}
+  .gantt-bar.ok{background:rgba(0,224,150,.35);border:1px solid rgba(0,224,150,.5);color:var(--ok)}
+  .gantt-bar.warn{background:rgba(255,184,48,.3);border:1px solid rgba(255,184,48,.5);color:var(--warn)}
+  .gantt-bar.danger{background:rgba(255,69,96,.3);border:1px solid rgba(255,69,96,.5);color:var(--danger)}
+  .gantt-dur{width:66px;flex-shrink:0;text-align:right;font-size:10px}
+
+  /* SERVICE DETAIL TABLE */
+  .svc-table{width:100%;border-collapse:collapse;margin-top:10px}
+  .svc-table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+  .svc-table td{font-size:11px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+  .svc-table tr:last-child td{border-bottom:none}
+
+  /* MISC */
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-state .big{font-size:36px;margin-bottom:10px}
+  .empty-state p{font-size:13px;line-height:1.8}
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--text);transform:translateY(70px);opacity:0;transition:all .3s;z-index:999;pointer-events:none;max-width:300px}
+  #toast.show{transform:none;opacity:1}
+  #toast.ok{border-color:var(--ok);color:var(--ok)}
+  #toast.error{border-color:var(--danger);color:var(--danger)}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:var(--surface)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+  .section-divider{border:none;border-top:1px solid var(--border);margin:8px 0 16px}
+  .chevron{display:inline-block;transition:transform .2s;color:var(--muted)}
+  .chevron.open{transform:rotate(90deg)}
+  .log-label{color:var(--muted);font-size:10px;margin-bottom:7px;text-transform:uppercase;letter-spacing:1px}
+  .toggle-link{color:var(--accent);font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;background:none;border:none;font-family:var(--font-mono);padding:0}
+  .toggle-link:hover{color:var(--accent2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">LPT <span>Log Analyser</span></div>
+        <div style="color:var(--muted);font-size:10px;margin-top:2px">Round Trip · Trace Dashboard</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div id="hdr-date">—</div>
+      <div id="hdr-count" style="color:var(--accent)">No data loaded</div>
+    </div>
+  </header>
+
+  <!-- LOAD DATA -->
+  <div class="card">
+    <div class="card-title">Load Log Data</div>
+    <div class="load-grid">
+      <div>
+        <div class="log-label">Bus Log (oer_bus.log)</div>
+        <div class="drop-zone" id="drop-bus">
+          <input type="file" id="file-bus" accept=".log,.txt"/>
+          <div class="drop-icon">📄</div>
+          <div class="drop-label"><strong>Drop bus log here</strong>or click to browse</div>
+          <div id="bus-badge" style="display:none" class="file-badge">✓ Loaded</div>
+        </div>
+        <textarea id="paste-bus" style="margin-top:9px" placeholder="…or paste bus log content here" rows="3"></textarea>
+      </div>
+      <div>
+        <div class="log-label">Access Log (oer_access.log)</div>
+        <div class="drop-zone" id="drop-access">
+          <input type="file" id="file-access" accept=".log,.txt"/>
+          <div class="drop-icon">📋</div>
+          <div class="drop-label"><strong>Drop access log here</strong>or click to browse</div>
+          <div id="access-badge" style="display:none" class="file-badge">✓ Loaded</div>
+        </div>
+        <textarea id="paste-access" style="margin-top:9px" placeholder="…or paste access log content here" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label class="ctrl-label">⚠ Warn</label>
+      <input type="number" id="thresh-warn" value="500" min="1"/>
+      <span style="color:var(--muted);font-size:11px">ms</span>
+      <label class="ctrl-label" style="margin-left:8px">🔴 Critical</label>
+      <input type="number" id="thresh-crit" value="2000" min="1"/>
+      <span style="color:var(--muted);font-size:11px">ms</span>
+      <label class="ctrl-label" style="margin-left:8px">Filter</label>
+      <select id="filter-status">
+        <option value="all">All</option>
+        <option value="ok">OK only</option>
+        <option value="warn">Warn only</option>
+        <option value="danger">Critical only</option>
+        <option value="error">Error only</option>
+      </select>
+      <button class="btn btn-primary" onclick="analyseAll()">▶ Analyse</button>
+      <button class="btn btn-ghost" onclick="loadDemo()">Demo Data</button>
+      <button class="btn btn-ghost" onclick="clearAll()">✕ Clear</button>
+      <button class="toggle-link" onclick="toggleMapping()" id="mapping-toggle" style="margin-left:6px">⚙ Service Name Mapping</button>
+    </div>
+
+    <!-- SERVICE NAME MAPPING PANEL -->
+    <div class="mapping-panel" id="mapping-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="color:var(--text);font-size:12px;font-weight:600">Service Name Mapping
+          <span style="color:var(--muted);font-size:10px;font-weight:400;margin-left:8px">— rename raw log strings to friendly display names</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="addMappingRow()">+ Add row</button>
+          <button class="btn btn-ghost btn-sm" onclick="applyMapping()">✓ Apply</button>
+        </div>
+      </div>
+      <p class="mapping-hint">After analysing, auto-detected raw service strings appear below. Enter a friendly display name on the right. Click <strong>Apply</strong> then <strong>Analyse</strong> again to refresh.</p>
+      <div class="mapping-grid" id="mapping-grid">
+        <div style="color:var(--muted);font-size:11px;padding:10px 0">Run Analyse first to populate detected services.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row" id="kpi-row" style="display:none">
+    <div class="kpi"><div class="kpi-label">Total Requests</div><div class="kpi-value" id="kpi-total">0</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Round Trip</div><div class="kpi-value ok" id="kpi-avg">0ms</div></div>
+    <div class="kpi"><div class="kpi-label">Max Round Trip</div><div class="kpi-value danger" id="kpi-max">0ms</div></div>
+    <div class="kpi"><div class="kpi-label">OK</div><div class="kpi-value ok" id="kpi-ok">0</div><div class="kpi-sub">below warn threshold</div></div>
+    <div class="kpi"><div class="kpi-label">Warnings</div><div class="kpi-value warn" id="kpi-warn">0</div><div class="kpi-sub">above warn threshold</div></div>
+    <div class="kpi"><div class="kpi-label">Critical</div><div class="kpi-value danger" id="kpi-crit">0</div><div class="kpi-sub">above critical threshold</div></div>
+    <div class="kpi"><div class="kpi-label">Errors</div><div class="kpi-value danger" id="kpi-err">0</div><div class="kpi-sub">failed requests</div></div>
+  </div>
+
+  <!-- RESULTS TABLE -->
+  <div class="card" id="results-card" style="display:none">
+    <div class="card-title">Trace Summary</div>
+    <div class="trace-filter-bar">
+      <input type="text" id="search-box" class="search-box" placeholder="🔍  Search trace ID or service…" oninput="filterTable()"/>
+      <select id="sort-col" onchange="sortTable()">
+        <option value="rtt">Sort: Round Trip ↓</option>
+        <option value="startTime">Sort: Start Time</option>
+        <option value="services">Sort: Service Count</option>
+        <option value="statusClass">Sort: Status</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+    <div class="traces-wrap">
+      <table id="trace-table">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th onclick="sortBy('traceId')">Trace ID ⇅</th>
+            <th onclick="sortBy('startTime')">Start Time ⇅</th>
+            <th onclick="sortBy('endTime')">End Time ⇅</th>
+            <th onclick="sortBy('rtt')">Round Trip ⇅</th>
+            <th onclick="sortBy('services')">Services ⇅</th>
+            <th onclick="sortBy('statusClass')">Status ⇅</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody id="trace-tbody"></tbody>
+      </table>
+    </div>
+    <div id="empty-results" class="empty-state" style="display:none">
+      <div class="big">🔍</div>
+      <p>No traces match your filter.</p>
+    </div>
+  </div>
+
+  <div id="initial-empty" class="empty-state">
+    <div class="big">📊</div>
+    <p>Upload or paste your <strong>bus log</strong> and <strong>access log</strong>,<br/>
+    set your thresholds, then click <strong>Analyse</strong>.<br/>
+    <span style="font-size:11px;margin-top:6px;display:block">Try <strong>Demo Data</strong> to see it in action.</span></p>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────
+let busText='', accessText='', allTraces=[], sortKey='rtt', sortDir=-1;
+// User-defined service name mapping: { rawString: displayName }
+let serviceMap = {};
+// All raw service strings detected after last parse
+let detectedServices = new Set();
+
+// ─── FILE DROP ───────────────────────────────────────────────
+function setupDrop(dropId,inputId,badgeId,target){
+  const drop=document.getElementById(dropId),input=document.getElementById(inputId),badge=document.getElementById(badgeId);
+  const load=f=>{const r=new FileReader();r.onload=e=>{if(target==='bus')busText=e.target.result;else accessText=e.target.result;badge.style.display='inline-block';badge.textContent='✓ '+f.name;toast('Loaded: '+f.name,'ok')};r.readAsText(f)};
+  input.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0])});
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag-over')});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('drag-over'));
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0])});
+}
+setupDrop('drop-bus','file-bus','bus-badge','bus');
+setupDrop('drop-access','file-access','access-badge','access');
+
+// ─── HELPERS ─────────────────────────────────────────────────
+function toMs(t){
+  if(!t)return 0;
+  try{return new Date(t.replace(' ','T')).getTime()||0}catch{return 0}
+}
+
+/**
+ * Parse duration from many formats:
+ *   "558[ms]"  "558ms"  "558 ms"  "1.2[s]"  "duration=558"  "558[MS]"
+ * Returns ms as number, or null.
+ */
+function parseDuration(line){
+  // Format: number[ms] or number[s] (brackets optional)
+  const bracketed = line.match(/(\d+(?:\.\d+)?)\s*\[?\s*(ms|MS|s|S)\s*\]?/g);
+  if(bracketed){
+    for(const m of bracketed){
+      const parts=m.match(/(\d+(?:\.\d+)?)\s*\[?\s*(ms|MS|s|S)\s*\]?/);
+      if(parts){
+        const v=parseFloat(parts[1]),u=parts[2].toLowerCase();
+        return u==='s'?Math.round(v*1000):Math.round(v);
+      }
+    }
+  }
+  // fallback: plain number before "ms"
+  const plain=line.match(/(\d+(?:\.\d+)?)\s*ms/i);
+  if(plain)return Math.round(parseFloat(plain[1]));
+  // duration= without unit (assume ms)
+  const dkv=line.match(/duration[=:]\s*(\d+(?:\.\d+)?)\b/i);
+  if(dkv)return Math.round(parseFloat(dkv[1]));
+  return null;
+}
+
+/**
+ * Determine status.
+ * Rule: default SUCCESS unless an explicit error keyword or error field with a real value.
+ */
+function resolveStatus(line, explicitStatus, errorVal){
+  // If explicit status field present, trust it
+  if(explicitStatus){
+    const s=explicitStatus.toUpperCase();
+    if(/^(SUCCESS|OK|PROCESSED|COMPLETED|ACCEPTED)/.test(s))return'SUCCESS';
+    if(/ERROR|FAIL|EXCEPTION|REJECT/.test(s))return'ERROR';
+    if(/WARN/.test(s))return'WARN';
+    if(/^2\d\d$/.test(s))return'SUCCESS';
+    if(/^[45]\d\d$/.test(s))return'ERROR';
+  }
+  // If error field has a meaningful non-null value
+  const hasError=errorVal&&!['none','null','—','-','n/a',''].includes(errorVal.toLowerCase());
+  if(hasError)return'ERROR';
+  // Default: SUCCESS (not UNKNOWN)
+  return'SUCCESS';
+}
+
+function displayName(raw){
+  return serviceMap[raw]||raw;
+}
+
+// ─── BUS LOG PARSER ──────────────────────────────────────────
+function parseBus(text){
+  return text.split('\n').filter(l=>l.trim()).map(line=>{
+    const d=line.match(/(\d{4}-\d{2}-\d{2}[T ][\d:.]+)/);
+    if(!d)return null;
+
+    // Trace ID
+    const tr=line.match(/[Tt]race[\-_]?[Ii][Dd][=:]?\s*([A-Za-z0-9\-_.]+)/);
+
+    // Service name: token right before "received in"
+    const svBefore=line.match(/\]\s*([\w.\-:]+?)\s+received in/i);
+    // Fallback: token after last ] bracket that looks like a class name
+    const svBracket=line.match(/\]\s*([\w.\-:]{4,})/);
+    const rawSvc=svBefore?svBefore[1]:svBracket?svBracket[1]:null;
+
+    // Duration – use improved parser
+    const dur=parseDuration(line);
+
+    // Explicit status field
+    const stMatch=line.match(/status[=:]\s*([^\s\],;]+)/i);
+    // Error field
+    const erMatch=line.match(/error[=:]\s*([^\s\],;]+)/i);
+    const errorVal=erMatch?erMatch[1]:null;
+
+    const status=resolveStatus(line, stMatch?stMatch[1]:null, errorVal);
+
+    if(rawSvc)detectedServices.add(rawSvc);
+
+    return{
+      time:d[1],
+      traceId:tr?tr[1]:null,
+      rawService:rawSvc||'Unknown',
+      service:displayName(rawSvc||'Unknown'),
+      dur,status,
+      error:(errorVal&&!['none','null','-'].includes(errorVal.toLowerCase()))?errorVal:null,
+      raw:line,source:'bus'
+    };
+  }).filter(Boolean);
+}
+
+// ─── ACCESS LOG PARSER ───────────────────────────────────────
+function parseAccess(text){
+  return text.split('\n').filter(l=>l.trim()).map(line=>{
+    const d=line.match(/(\d{4}-\d{2}-\d{2}[T ][\d:.]+)/);
+    if(!d)return null;
+
+    const tr=line.match(/[Tt]race[\-_]?[Ii][Dd][=:]?\s*([A-Za-z0-9\-_.]+)/);
+
+    // Service: prefer specific patterns, then bracket extract
+    const svSpecific=line.match(/(OrderEntry\w*|OrderEntryRequest\w*)/i);
+    const svBracket=line.match(/\]\s*([\w.\-:]{4,})/);
+    const rawSvc=svSpecific?(svSpecific[1]):(svBracket?svBracket[1]:null);
+
+    const dur=parseDuration(line);
+
+    // HTTP status code takes priority
+    const httpCode=line.match(/\bHTTP[/ ]\s*(\d{3})\b|\b(\d{3})\s+(?:OK|Created|Accepted|Bad Request|Forbidden|Not Found|Error)\b/i);
+    const stMatch=line.match(/status[=:]\s*([^\s\],;]+)/i);
+    const erMatch=line.match(/(?:error|exception)[=:]\s*([^\s\],;]+)/i);
+    const errorVal=erMatch?erMatch[1]:null;
+
+    let explicitStatus=null;
+    if(httpCode){const c=httpCode[1]||httpCode[2];explicitStatus=/^2/.test(c)?'SUCCESS':/^[45]/.test(c)?'ERROR':null}
+    else if(stMatch){explicitStatus=stMatch[1]}
+
+    const status=resolveStatus(line,explicitStatus,errorVal);
+
+    if(rawSvc)detectedServices.add(rawSvc);
+
+    return{
+      time:d[1],traceId:tr?tr[1]:null,
+      rawService:rawSvc||'AccessLog',
+      service:displayName(rawSvc||'AccessLog'),
+      dur,status,
+      error:(errorVal&&!['none','null','-'].includes(errorVal.toLowerCase()))?errorVal:null,
+      raw:line,source:'access'
+    };
+  }).filter(Boolean);
+}
+
+// ─── BUILD TRACES ────────────────────────────────────────────
+function buildTraces(bus,access){
+  const all=[...bus,...access].sort((a,b)=>toMs(a.time)-toMs(b.time));
+  const map={};
+  for(const e of all){
+    const k=e.traceId||('_anon_'+e.time);
+    if(!map[k])map[k]={traceId:k,calls:[]};
+    map[k].calls.push(e);
+  }
+  const WARN=parseInt(document.getElementById('thresh-warn').value)||500;
+  const CRIT=parseInt(document.getElementById('thresh-crit').value)||2000;
+
+  return Object.values(map).map(g=>{
+    const times=g.calls.map(c=>toMs(c.time)).filter(Boolean);
+    const minT=Math.min(...times);
+    // RTT = (last timestamp - first timestamp) + last call's duration
+    const sorted=[...g.calls].sort((a,b)=>toMs(a.time)-toMs(b.time));
+    const lastCall=sorted[sorted.length-1];
+    const maxT=toMs(lastCall.time);
+    const lastDur=lastCall.dur||0;
+    const rtt=(maxT-minT)+lastDur;
+
+    const hasErr=g.calls.some(c=>c.status==='ERROR');
+    const errors=[...new Set(g.calls.map(c=>c.error).filter(Boolean))];
+
+    let sc='ok';
+    if(hasErr)sc='danger';
+    else if(rtt>=CRIT)sc='danger';
+    else if(rtt>=WARN)sc='warn';
+
+    return{
+      traceId:g.traceId,calls:g.calls,
+      startTime:sorted[0]?.time||'—',
+      endTime:lastCall?.time||'—',
+      rtt,services:g.calls.length,
+      statusClass:sc,hasError:hasErr,errors
+    };
+  });
+}
+
+// ─── MAPPING PANEL ───────────────────────────────────────────
+function toggleMapping(){
+  const p=document.getElementById('mapping-panel');
+  p.classList.toggle('open');
+  document.getElementById('mapping-toggle').textContent=
+    p.classList.contains('open')?'✕ Close Mapping':'⚙ Service Name Mapping';
+}
+
+function populateMappingGrid(){
+  const grid=document.getElementById('mapping-grid');
+  if(!detectedServices.size){grid.innerHTML='<div style="color:var(--muted);font-size:11px;padding:10px 0">No services detected yet.</div>';return}
+  grid.innerHTML=[...detectedServices].sort().map(raw=>`
+    <div class="mapping-row">
+      <div class="mapping-raw" title="${raw}">${raw}</div>
+      <div class="mapping-arrow">→</div>
+      <input class="mapping-input" data-raw="${raw}" placeholder="Display name…" value="${serviceMap[raw]||''}"/>
+    </div>`).join('');
+}
+
+function addMappingRow(){
+  const grid=document.getElementById('mapping-grid');
+  const row=document.createElement('div');row.className='mapping-row';
+  row.innerHTML=`<input class="mapping-input" placeholder="Raw string from log…" style="width:160px"/>
+    <div class="mapping-arrow">→</div>
+    <input class="mapping-input" placeholder="Display name…" style="width:160px"/>`;
+  grid.appendChild(row);
+}
+
+function applyMapping(){
+  // From auto-rows
+  document.querySelectorAll('#mapping-grid .mapping-row').forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    if(inputs.length===1){
+      // auto-row with data-raw
+      const raw=inputs[0].dataset.raw;
+      const val=inputs[0].value.trim();
+      if(raw)serviceMap[raw]=val||raw;
+    } else if(inputs.length===2){
+      // manual add row
+      const raw=inputs[0].value.trim();
+      const val=inputs[1].value.trim();
+      if(raw&&val){serviceMap[raw]=val;detectedServices.add(raw)}
+    }
+  });
+  toast('Mapping applied — click Analyse to refresh.','ok');
+}
+
+// ─── ANALYSE ─────────────────────────────────────────────────
+function analyseAll(){
+  const bT=busText||document.getElementById('paste-bus').value.trim();
+  const aT=accessText||document.getElementById('paste-access').value.trim();
+  if(!bT&&!aT){toast('Please load or paste at least one log file.','error');return}
+  detectedServices.clear();
+  allTraces=buildTraces(bT?parseBus(bT):[],aT?parseAccess(aT):[]);
+  if(!allTraces.length){toast('No trace entries found. Check log format.','error');return}
+  populateMappingGrid();
+  renderKPIs();renderTable();
+  document.getElementById('kpi-row').style.display='grid';
+  document.getElementById('results-card').style.display='block';
+  document.getElementById('initial-empty').style.display='none';
+  document.getElementById('hdr-date').textContent=new Date().toLocaleString();
+  document.getElementById('hdr-count').textContent=allTraces.length+' traces analysed';
+  toast(allTraces.length+' traces loaded.','ok');
+}
+
+// ─── KPIs ────────────────────────────────────────────────────
+function renderKPIs(){
+  const W=parseInt(document.getElementById('thresh-warn').value)||500;
+  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
+  const rtts=allTraces.map(t=>t.rtt).filter(v=>v>0);
+  const avg=rtts.length?Math.round(rtts.reduce((a,b)=>a+b,0)/rtts.length):0;
+  const max=rtts.length?Math.max(...rtts):0;
+  document.getElementById('kpi-total').textContent=allTraces.length;
+  document.getElementById('kpi-avg').textContent=avg+'ms';
+  document.getElementById('kpi-max').textContent=max+'ms';
+  document.getElementById('kpi-ok').textContent=allTraces.filter(t=>!t.hasError&&t.rtt<W).length;
+  document.getElementById('kpi-warn').textContent=allTraces.filter(t=>!t.hasError&&t.rtt>=W&&t.rtt<C).length;
+  document.getElementById('kpi-crit').textContent=allTraces.filter(t=>!t.hasError&&t.rtt>=C).length;
+  document.getElementById('kpi-err').textContent=allTraces.filter(t=>t.hasError).length;
+}
+
+// ─── TABLE ───────────────────────────────────────────────────
+function getFiltered(){
+  const q=document.getElementById('search-box').value.toLowerCase();
+  const s=document.getElementById('filter-status').value;
+  return allTraces.filter(t=>{
+    const mq=!q||t.traceId.toLowerCase().includes(q)||t.calls.some(c=>c.service.toLowerCase().includes(q));
+    const ms=s==='all'||(s==='ok'&&t.statusClass==='ok')||(s==='warn'&&t.statusClass==='warn')||(s==='danger'&&t.statusClass==='danger'&&!t.hasError)||(s==='error'&&t.hasError);
+    return mq&&ms;
+  });
+}
+
+function renderTable(){
+  const data=getFiltered().sort((a,b)=>{
+    let va=a[sortKey],vb=b[sortKey];
+    if(typeof va==='string')va=va.toLowerCase();
+    if(typeof vb==='string')vb=vb.toLowerCase();
+    return va<vb?sortDir:va>vb?-sortDir:0;
+  });
+  const tbody=document.getElementById('trace-tbody');tbody.innerHTML='';
+  document.getElementById('empty-results').style.display=data.length?'none':'block';
+  const W=parseInt(document.getElementById('thresh-warn').value)||500;
+  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
+  data.forEach(trace=>{
+    const dc=trace.hasError?'dur-danger':trace.rtt>=C?'dur-danger':trace.rtt>=W?'dur-warn':'dur-ok';
+    const sid=trace.traceId.length>20?trace.traceId.slice(0,20)+'…':trace.traceId;
+    const safeId=trace.traceId.replace(/[^a-zA-Z0-9]/g,'_');
+    const tr=document.createElement('tr');tr.dataset.id=trace.traceId;
+    tr.innerHTML=`<td style="width:28px;text-align:center"><span class="chevron" id="chev-${safeId}">›</span></td>
+      <td class="trace-id-cell" title="${trace.traceId}">${sid}</td>
+      <td style="color:var(--muted);font-size:10px">${trace.startTime}</td>
+      <td style="color:var(--muted);font-size:10px">${trace.endTime}</td>
+      <td class="dur-cell ${dc}">${trace.rtt>0?trace.rtt+' ms':'—'}</td>
+      <td style="color:var(--accent2)">${trace.services}</td>
+      <td><span class="badge badge-${trace.statusClass}">${trace.hasError?'ERROR':trace.statusClass.toUpperCase()}</span></td>
+      <td style="color:var(--danger);font-size:10px">${trace.errors.slice(0,2).join(', ')||'—'}</td>`;
+    tr.addEventListener('click',()=>toggleDetail(trace,tr,safeId));
+    tbody.appendChild(tr);
+    const dr=document.createElement('tr');dr.classList.add('detail-row');dr.id='detail-'+safeId;dr.style.display='none';
+    const dd=document.createElement('td');dd.colSpan=8;dr.appendChild(dd);tbody.appendChild(dr);
+  });
+}
+
+function toggleDetail(trace,tr,safeId){
+  const dr=document.getElementById('detail-'+safeId);
+  const ch=document.getElementById('chev-'+safeId);
+  if(dr.style.display!=='none'){dr.style.display='none';tr.classList.remove('expanded');if(ch)ch.classList.remove('open');return}
+  document.querySelectorAll('.detail-row').forEach(r=>r.style.display='none');
+  document.querySelectorAll('tr.expanded').forEach(r=>r.classList.remove('expanded'));
+  document.querySelectorAll('.chevron.open').forEach(c=>c.classList.remove('open'));
+  tr.classList.add('expanded');if(ch)ch.classList.add('open');
+  dr.style.display='';dr.firstElementChild.innerHTML=buildDetail(trace);
+}
+
+function buildDetail(trace){
+  const W=parseInt(document.getElementById('thresh-warn').value)||500;
+  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
+  const times=trace.calls.map(c=>toMs(c.time)).filter(v=>v>0);
+  const minT=Math.min(...times);
+  const maxEnd=Math.max(...trace.calls.map(c=>toMs(c.time)+(c.dur||0)));
+  const total=maxEnd-minT||1;
+
+  const gantt=trace.calls.map(c=>{
+    const s=toMs(c.time)-minT;
+    const d=c.dur||0;
+    const left=(s/total)*100;
+    const width=Math.max((d/total)*100,2);
+    const cls=c.status==='ERROR'?'danger':d>=C?'danger':d>=W?'warn':'ok';
+    return`<div class="gantt-row">
+      <div class="gantt-label" title="${c.rawService}">
+        <span style="font-size:8px;color:var(--muted);margin-right:3px">[${c.source.toUpperCase()}]</span>${c.service}
+      </div>
+      <div class="gantt-track"><div class="gantt-bar ${cls}" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%">${d?d+'ms':''}</div></div>
+      <div class="gantt-dur ${cls==='ok'?'dur-ok':cls==='warn'?'dur-warn':'dur-danger'}">${d>0?d+' ms':'—'}</div>
+    </div>`;
+  }).join('');
+
+  const rows=trace.calls.map(c=>`<tr>
+    <td><span class="badge" style="background:rgba(124,92,252,.15);color:var(--accent2);border:1px solid rgba(124,92,252,.3)">${c.source.toUpperCase()}</span></td>
+    <td title="${c.rawService}">${c.service}</td>
+    <td style="color:var(--muted);font-size:10px">${c.time}</td>
+    <td class="${c.status==='ERROR'?'dur-danger':(c.dur||0)>=C?'dur-danger':(c.dur||0)>=W?'dur-warn':'dur-ok'}">${c.dur!=null&&c.dur>0?c.dur+' ms':'—'}</td>
+    <td><span class="badge badge-${c.status==='ERROR'?'danger':c.status==='WARN'?'warn':'ok'}">${c.status}</span></td>
+    <td style="color:var(--danger);font-size:10px">${c.error||'—'}</td>
+  </tr>`).join('');
+
+  const rttClass=trace.rtt>=C?'dur-danger':trace.rtt>=W?'dur-warn':'dur-ok';
+  return`<div class="detail-inner">
+    <div class="detail-title">▸ Trace: ${trace.traceId} &nbsp;·&nbsp; Round Trip: <span class="${rttClass}">${trace.rtt} ms</span> &nbsp;·&nbsp; ${trace.services} service calls</div>
+    <div class="gantt">${gantt}</div>
+    <hr class="section-divider"/>
+    <table class="svc-table">
+      <thead><tr><th>Source</th><th>Service</th><th>Timestamp</th><th>Duration</th><th>Status</th><th>Error</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+// ─── SORT / FILTER ───────────────────────────────────────────
+function filterTable(){renderTable()}
+function sortTable(){sortKey=document.getElementById('sort-col').value;renderTable()}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}renderTable()}
+
+// ─── EXPORT CSV ──────────────────────────────────────────────
+function exportCSV(){
+  const data=getFiltered();
+  const rows=[['TraceID','StartTime','EndTime','RoundTrip_ms','Services','Status','Errors']];
+  data.forEach(t=>rows.push([t.traceId,t.startTime,t.endTime,t.rtt,t.services,t.hasError?'ERROR':t.statusClass.toUpperCase(),t.errors.join(';')]));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='lpt_traces_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('CSV exported.','ok');
+}
+
+// ─── CLEAR ───────────────────────────────────────────────────
+function clearAll(){
+  busText='';accessText='';
+  document.getElementById('paste-bus').value='';document.getElementById('paste-access').value='';
+  document.getElementById('bus-badge').style.display='none';document.getElementById('access-badge').style.display='none';
+  document.getElementById('kpi-row').style.display='none';document.getElementById('results-card').style.display='none';
+  document.getElementById('initial-empty').style.display='block';
+  document.getElementById('hdr-count').textContent='No data loaded';allTraces=[];
+  detectedServices.clear();toast('Cleared.','ok');
+}
+
+// ─── DEMO DATA ───────────────────────────────────────────────
+function loadDemo(){
+  document.getElementById('paste-bus').value=
+`2026-03-16 12:01:00.100 [TRC-001] OrderValidationService received in 45[ms] status=SUCCESS error=none
+2026-03-16 12:01:00.160 [TRC-001] InventoryCheckService received in 310[ms] status=SUCCESS error=none
+2026-03-16 12:01:00.490 [TRC-001] PricingCalculatorService received in 80[ms] status=SUCCESS error=none
+2026-03-16 12:01:00.590 [TRC-001] PaymentGatewayService received in 620[ms] status=SUCCESS error=none
+2026-03-16 12:01:01.230 [TRC-001] NotificationDispatchService received in 55[ms] status=SUCCESS error=none
+2026-03-16 12:01:01.300 [TRC-001] AuditLoggingService received in 20[ms] status=SUCCESS error=none
+2026-03-16 12:02:05.000 [TRC-002] OrderValidationService received in 42[ms] status=SUCCESS error=none
+2026-03-16 12:02:05.060 [TRC-002] InventoryCheckService received in 2400[ms] status=SUCCESS error=none
+2026-03-16 12:02:07.480 [TRC-002] PricingCalculatorService received in 91[ms] status=SUCCESS error=none
+2026-03-16 12:02:07.590 [TRC-002] PaymentGatewayService received in 180[ms] status=SUCCESS error=none
+2026-03-16 12:02:07.790 [TRC-002] NotificationDispatchService received in 60[ms] error=SMTP_TIMEOUT
+2026-03-16 12:03:10.000 [TRC-003] OrderValidationService received in 38[ms] status=SUCCESS error=none
+2026-03-16 12:03:10.050 [TRC-003] InventoryCheckService received in 700[ms] status=SUCCESS error=none
+2026-03-16 12:03:10.770 [TRC-003] PricingCalculatorService received in 95[ms] status=SUCCESS error=none
+2026-03-16 12:03:10.880 [TRC-003] PaymentGatewayService received in 540[ms] status=SUCCESS error=none
+2026-03-16 12:04:20.000 [TRC-004] OrderValidationService received in 500[ms] error=INVALID_ORDER_SCHEMA
+2026-03-16 12:04:20.510 [TRC-004] ErrorHandlerService received in 12[ms] status=SUCCESS error=none`;
+  document.getElementById('paste-access').value=
+`2026-03-16 12:01:01.360 [TRC-001] OrderEntryRequestprocessed HTTP 200 duration=1260[ms]
+2026-03-16 12:02:07.860 [TRC-002] OrderEntryRequestprocessed HTTP 200 duration=2860[ms]
+2026-03-16 12:03:11.440 [TRC-003] OrderEntryRequestprocessed HTTP 200 duration=1440[ms]
+2026-03-16 12:04:20.522 [TRC-004] OrderEntryRequestprocessed HTTP 400 duration=522[ms] error=INVALID_ORDER_SCHEMA`;
+  busText='';accessText='';toast('Demo loaded — click Analyse.','ok');
+}
+
+// ─── TOAST ───────────────────────────────────────────────────
+let toastTimer;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',3200);
+}
+document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+</script>
+</body>
+</html>
