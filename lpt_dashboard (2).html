@@ -2,148 +2,453 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>LPT Log Analyser · Round Trip Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LPT Log Analyser</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#09090f;--surface:#111118;--surface2:#18181f;--border:#2a2a38;
-  --accent:#00e5ff;--accent2:#7c5cfc;--ok:#00e096;--warn:#ffb830;
-  --danger:#ff4560;--text:#e8e8f0;--muted:#6b6b88;
-  --fh:'Syne',sans-serif;--fm:'JetBrains Mono',monospace;
+  --bg:#0b0d14;--sf:#13151f;--sf2:#1a1d29;--sf3:#1f2231;
+  --bd:#252838;--bd2:#2e3248;
+  --ac:#4f8eff;--ac2:#6c63ff;
+  --ok:#22c55e;--wn:#f59e0b;--dg:#ef4444;
+  --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#64748b;
+  --fh:'Plus Jakarta Sans',sans-serif;
+  --fb:'Inter',sans-serif;
+  --fm:'IBM Plex Mono',monospace;
+  --r:8px;--r2:6px;--r3:4px;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 4px 16px rgba(0,0,0,.5);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--fm);font-size:13px;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.18;pointer-events:none;z-index:0}
-.wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 22px 60px}
+body{background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:13px;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* subtle dot grid */
+body::before{content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle,rgba(79,142,255,.08) 1px,transparent 1px);
+  background-size:28px 28px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1520px;margin:0 auto;padding:0 28px 72px}
 
-/* HEADER */
-header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;border-bottom:1px solid var(--border);margin-bottom:24px}
-.logo{display:flex;align-items:center;gap:11px}
-.logo-icon{width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:grid;place-items:center;font-size:17px;flex-shrink:0}
-.logo-text{font-family:var(--fh);font-size:17px;font-weight:800;letter-spacing:-.5px}
-.logo-text span{color:var(--accent)}
-.header-meta{color:var(--muted);font-size:10px;text-align:right;line-height:1.9}
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;
+  padding:22px 0 18px;border-bottom:1px solid var(--bd);margin-bottom:24px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--ac2),var(--ac));
+  display:grid;place-items:center;font-size:17px;flex-shrink:0;
+  box-shadow:0 0 20px rgba(79,142,255,.25)}
+.logo-text{font-family:var(--fh);font-size:17px;font-weight:800;letter-spacing:-.3px;color:var(--tx)}
+.logo-text span{color:var(--ac)}
+.logo-sub{font-family:var(--fb);font-size:11px;font-weight:400;color:var(--tx3);margin-top:1px;letter-spacing:.2px}
+.hm{color:var(--tx3);font-size:11px;text-align:right;line-height:2;font-family:var(--fb)}
 
-/* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px 20px;margin-bottom:16px}
-.card-title{font-family:var(--fh);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:7px}
-.card-title::before{content:'';display:block;width:3px;height:12px;border-radius:2px;background:var(--accent)}
+/* ── CARD ── */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+  padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.ct{font-family:var(--fh);font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.8px;color:var(--tx3);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.ct::before{content:'';display:block;width:2px;height:12px;border-radius:2px;background:var(--ac)}
 
-/* LOAD */
-.load-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:700px){.load-grid{grid-template-columns:1fr}}
-.drop-zone{border:2px dashed var(--border);border-radius:9px;padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
-.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.04)}
-.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.drop-icon{font-size:22px;margin-bottom:5px}
-.drop-label{color:var(--muted);font-size:11px;line-height:1.6}
-.drop-label strong{color:var(--text);display:block;font-size:12px;margin-bottom:3px}
-.file-badge{display:inline-block;margin-top:5px;padding:2px 8px;background:rgba(0,224,150,.1);border:1px solid var(--ok);color:var(--ok);border-radius:20px;font-size:10px}
-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--fm);font-size:11px;padding:9px;resize:vertical;min-height:72px;outline:none;transition:border-color .2s}
-textarea:focus{border-color:var(--accent)}
-textarea::placeholder{color:var(--muted)}
+/* ── DROP ZONES ── */
+.lg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.lg{grid-template-columns:1fr}}
+.ll{font-family:var(--fb);font-size:11px;font-weight:600;color:var(--tx2);
+  margin-bottom:8px;letter-spacing:.3px}
+.dz{border:1.5px dashed var(--bd2);border-radius:var(--r);padding:30px 16px;
+  text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s,box-shadow .2s;position:relative;
+  background:var(--sf2)}
+.dz:hover,.dz.drag-over{border-color:var(--ac);background:rgba(79,142,255,.05);
+  box-shadow:0 0 0 4px rgba(79,142,255,.08)}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:22px;margin-bottom:8px;opacity:.7}
+.dz-label{color:var(--tx3);font-size:12px;line-height:1.6;font-family:var(--fb)}
+.dz-label strong{color:var(--tx2);display:block;font-size:13px;font-weight:600;margin-bottom:3px}
+.dz-label span{font-size:11px}
+.fbadge{display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+  padding:4px 10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);
+  color:var(--ok);border-radius:20px;font-size:11px;font-weight:500;font-family:var(--fb)}
 
-/* CONTROLS */
-.controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:13px}
-label.cl{color:var(--muted);font-size:11px;white-space:nowrap}
-input[type=number],input[type=text],select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--fm);font-size:11px;padding:5px 10px;outline:none;transition:border-color .2s}
-input[type=number]:focus,input[type=text]:focus,select:focus{border-color:var(--accent)}
-input[type=number]{width:78px}
-select{cursor:pointer}
-select option{background:var(--surface2)}
-.btn{padding:6px 16px;border-radius:6px;border:none;font-family:var(--fm);font-size:11px;font-weight:600;cursor:pointer;transition:all .18s}
-.btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#09090f}
-.btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px)}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
-.btn-xs{padding:3px 10px;font-size:10px}
-.tlink{color:var(--accent);font-size:11px;cursor:pointer;background:none;border:none;font-family:var(--fm);padding:0;text-decoration:underline;text-underline-offset:2px}
-.tlink:hover{color:var(--accent2)}
+/* ── CONTROLS ── */
+.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--bd)}
+.cl{color:var(--tx3);font-size:12px;font-weight:500;white-space:nowrap;font-family:var(--fb)}
+.ctrl-sep{width:1px;height:20px;background:var(--bd2);flex-shrink:0;margin:0 2px}
+input[type=number],input[type=text],select{
+  background:var(--sf2);border:1px solid var(--bd2);border-radius:var(--r3);
+  color:var(--tx);font-family:var(--fb);font-size:12px;font-weight:500;
+  padding:6px 10px;outline:none;transition:border-color .2s,box-shadow .2s}
+input[type=number]:focus,input[type=text]:focus,select:focus{
+  border-color:var(--ac);box-shadow:0 0 0 3px rgba(79,142,255,.15)}
+input[type=number]{width:76px}
+select{cursor:pointer;padding-right:28px}
+select option{background:var(--sf2)}
+.btn{padding:7px 16px;border-radius:var(--r3);border:none;font-family:var(--fb);
+  font-size:12px;font-weight:600;cursor:pointer;transition:all .17s;letter-spacing:.1px}
+.bp{background:linear-gradient(135deg,var(--ac2),var(--ac));color:#fff;
+  box-shadow:0 2px 8px rgba(79,142,255,.3)}
+.bp:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,142,255,.4)}
+.bg{background:var(--sf3);border:1px solid var(--bd2);color:var(--tx2)}
+.bg:hover{border-color:var(--ac);color:var(--ac);background:rgba(79,142,255,.06)}
+.bx{padding:5px 11px;font-size:11px}
+.tl{color:var(--ac);font-size:11px;cursor:pointer;background:none;border:none;
+  font-family:var(--fb);padding:0;font-weight:500;
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(79,142,255,.4)}
+.tl:hover{color:var(--ac2)}
 
-/* ── KPI – truly fixed overflow ── */
-.kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;margin-bottom:16px}
-@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+/* ── PROGRESS ── */
+#prog-wrap{display:none;margin-top:14px;border:1px solid var(--bd2);
+  border-radius:var(--r);padding:14px 16px;background:var(--sf2)}
+.prog-title{font-size:12px;font-weight:500;color:var(--tx);margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:center;font-family:var(--fb)}
+.prog-bars{display:flex;flex-direction:column;gap:8px}
+.pb-row{display:flex;align-items:center;gap:10px}
+.pb-label{font-size:11px;color:var(--tx2);width:90px;flex-shrink:0;font-weight:500}
+.pb-track{flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden}
+.pb-fill{height:100%;border-radius:3px;transition:width .12s;width:0%}
+.pb-fill.bus{background:linear-gradient(90deg,var(--ac2),var(--ac))}
+.pb-fill.access{background:linear-gradient(90deg,var(--ok),#34d399)}
+.pb-pct{font-size:11px;color:var(--tx3);width:36px;text-align:right;flex-shrink:0;
+  font-family:var(--fm)}
+.warn-banner{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);
+  border-radius:var(--r3);padding:8px 12px;font-size:11px;color:var(--wn);
+  margin-top:10px;display:none;font-family:var(--fb)}
+
+/* ── KPI CARDS ── */
+.kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:1200px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:600px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 12px 10px;overflow:hidden;min-width:0}
-.kpi-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Key fix: font-size uses px not vw so it's deterministic; we pick a size that fits */
-.kpi-value{font-family:var(--fh);font-weight:800;font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.kpi-value.ok{color:var(--ok)}.kpi-value.warn{color:var(--warn)}.kpi-value.danger{color:var(--danger)}
-.kpi-sub{color:var(--muted);font-size:8px;margin-top:3px;line-height:1.4}
+.kpi{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+  padding:14px 14px 12px;overflow:hidden;min-width:0;
+  transition:border-color .2s;box-shadow:var(--shadow)}
+.kpi:hover{border-color:var(--bd2)}
+.kpi-label{font-family:var(--fb);font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--tx3);margin-bottom:6px}
+/* hard 16px — fits all values cleanly */
+.kv{font-family:var(--fh);font-weight:800;font-size:16px;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.kv.ok{color:var(--ok)}.kv.wn{color:var(--wn)}.kv.dg{color:var(--dg)}
+.kv.neutral{color:var(--tx)}
+.ks{font-family:var(--fb);color:var(--tx3);font-size:10px;margin-top:3px}
 
-/* MAPPING PANEL */
-.mapping-panel{display:none;margin-top:13px;border-top:1px solid var(--border);padding-top:13px}
-.mapping-panel.open{display:block}
-.mapping-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:7px;margin-top:9px;max-height:240px;overflow-y:auto}
-.mapping-row{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 9px}
-.mapping-raw{color:var(--muted);font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mapping-arrow{color:var(--border);font-size:11px;flex-shrink:0}
-.mapping-input{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--fm);font-size:10px;padding:3px 7px;width:150px;outline:none}
-.mapping-input:focus{border-color:var(--accent)}
+/* ── MAPPING PANEL ── */
+.mp{display:none;margin-top:14px;border-top:1px solid var(--bd);padding-top:14px}
+.mp.open{display:block}
+.mp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mp-title{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--tx2)}
+.mp-hint{font-family:var(--fb);color:var(--tx3);font-size:11px;margin-bottom:10px;line-height:1.5}
+.mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:7px;max-height:240px;overflow-y:auto}
+.mr{display:flex;align-items:center;gap:8px;background:var(--sf2);
+  border:1px solid var(--bd);border-radius:var(--r3);padding:7px 10px}
+.mr-raw{color:var(--tx3);font-size:11px;flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-family:var(--fm)}
+.mr-arrow{color:var(--bd2);font-size:12px;flex-shrink:0}
+.mi{background:var(--bg);border:1px solid var(--bd2);border-radius:3px;
+  color:var(--tx);font-family:var(--fb);font-size:11px;font-weight:500;
+  padding:4px 8px;width:140px;outline:none;transition:border-color .2s}
+.mi:focus{border-color:var(--ac)}
 
-/* TABLE */
-.tfbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px;align-items:center}
-.sbox{flex:1;min-width:150px}
+/* ── TABLE ── */
+.tfbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.sb{flex:1;min-width:180px}
 .tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-thead th{background:var(--surface2);color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
-thead th:hover{color:var(--accent)}
-tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;cursor:pointer}
-tbody tr:hover{background:rgba(0,229,255,.04)}
-tbody tr.expanded{background:rgba(124,92,252,.07)}
-tbody td{padding:8px 10px;vertical-align:middle;font-size:11px}
-.tid{color:var(--accent);font-weight:600;font-size:11px}
-.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.bok{background:rgba(0,224,150,.12);color:var(--ok);border:1px solid rgba(0,224,150,.3)}
-.bwarn{background:rgba(255,184,48,.12);color:var(--warn);border:1px solid rgba(255,184,48,.3)}
-.bdanger{background:rgba(255,69,96,.12);color:var(--danger);border:1px solid rgba(255,69,96,.3)}
-.dok{color:var(--ok);font-weight:600}.dwarn{color:var(--warn);font-weight:600}.ddanger{color:var(--danger);font-weight:600}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+/* column widths — trace ID gets generous space */
+col.c-chev{width:32px}
+col.c-tid{width:260px}
+col.c-req{width:160px}
+col.c-time{width:170px}
+col.c-rtt{width:110px}
+col.c-calls{width:80px}
+col.c-status{width:90px}
+col.c-err{width:auto}
+thead th{background:var(--sf2);color:var(--tx3);font-family:var(--fb);
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;
+  padding:9px 12px;text-align:left;border-bottom:1px solid var(--bd);
+  white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--ac)}
+thead th:first-child{border-radius:var(--r3) 0 0 0}
+thead th:last-child{border-radius:0 var(--r3) 0 0}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.035);
+  transition:background .12s;cursor:pointer}
+tbody tr:hover{background:rgba(79,142,255,.05)}
+tbody tr.expanded{background:rgba(108,99,255,.06);border-left:2px solid var(--ac2)}
+tbody td{padding:10px 12px;vertical-align:middle;font-size:12px;font-family:var(--fb)}
+/* trace ID — full width, mono, no truncation */
+.tid{color:var(--ac);font-weight:500;font-size:12px;
+  font-family:var(--fm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;
+  font-family:var(--fb)}
+.bok{background:rgba(34,197,94,.1);color:var(--ok);border:1px solid rgba(34,197,94,.25)}
+.bwn{background:rgba(245,158,11,.1);color:var(--wn);border:1px solid rgba(245,158,11,.25)}
+.bdg{background:rgba(239,68,68,.1);color:var(--dg);border:1px solid rgba(239,68,68,.25)}
+.dok{color:var(--ok);font-weight:600}.dwn{color:var(--wn);font-weight:600}.ddg{color:var(--dg);font-weight:600}
 
-/* DETAIL */
+/* ── DETAIL EXPAND ── */
 .drow td{padding:0!important}
-.dinner{padding:14px 18px 18px;background:var(--surface2);border-top:1px solid var(--border);animation:sd .2s ease}
-@keyframes sd{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
-.dtitle{font-family:var(--fh);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.din{padding:18px 22px 22px;background:#0f1118;
+  border-top:1px solid var(--bd);animation:sd .18s ease}
+@keyframes sd{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
-/* GANTT */
-.gantt{position:relative;margin-top:8px}
-.grow{display:flex;align-items:center;gap:9px;margin-bottom:7px;min-height:24px}
-.glabel{width:140px;flex-shrink:0;font-size:10px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gtrack{flex:1;height:20px;background:var(--surface);border-radius:3px;position:relative;overflow:hidden;border:1px solid var(--border)}
-.gbar{position:absolute;height:100%;border-radius:3px;display:flex;align-items:center;padding:0 5px;font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;transition:filter .15s}
-.gbar:hover{filter:brightness(1.2)}
-.gbar.ok{background:rgba(0,224,150,.35);border:1px solid rgba(0,224,150,.5);color:var(--ok)}
-.gbar.warn{background:rgba(255,184,48,.3);border:1px solid rgba(255,184,48,.5);color:var(--warn)}
-.gbar.danger{background:rgba(255,69,96,.3);border:1px solid rgba(255,69,96,.5);color:var(--danger)}
-.gdur{width:62px;flex-shrink:0;text-align:right;font-size:10px}
+/* trace header */
+.dtitle{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bd)}
+.dtitle-traceid{font-family:var(--fm);font-size:11px;font-weight:500;
+  color:var(--ac);letter-spacing:.2px}
+.dtitle-sep{color:var(--bd2);font-size:10px;user-select:none}
+.dtitle-rtt-label{font-family:var(--fb);font-size:10px;font-weight:500;color:var(--tx3)}
+.dtitle-rtt-val{font-family:var(--fm);font-size:12px;font-weight:700;line-height:1}
+.dtitle-calls{font-family:var(--fb);font-size:10px;color:var(--tx3);
+  margin-left:auto;opacity:.7}
 
-/* ACCESS SUMMARY ROW (special highlight) */
-.access-summary{background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.25);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-.as-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
-.as-val{font-family:var(--fh);font-size:15px;font-weight:800}
+/* ── ACCESS SUMMARY CARD ── */
+.asum{display:flex;gap:0;background:var(--sf2);
+  border:1px solid var(--bd);border-radius:6px;
+  margin-bottom:16px;overflow:hidden}
+.asum-cell{flex:1;padding:11px 16px;border-right:1px solid var(--bd)}
+.asum-cell:last-child{border-right:none}
+.asl{font-family:var(--fb);font-size:9px;font-weight:500;text-transform:uppercase;
+  letter-spacing:1.1px;color:var(--tx3);margin-bottom:5px}
+.asv{font-family:var(--fb);font-size:13px;font-weight:600;line-height:1.2;color:var(--tx)}
+.asv.mono{font-family:var(--fm);font-size:11px;font-weight:400;color:var(--tx2)}
 
-/* SVC TABLE */
-.svt{width:100%;border-collapse:collapse;margin-top:10px}
-.svt th{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:5px 9px;border-bottom:1px solid var(--border);text-align:left}
-.svt td{font-size:10px;padding:6px 9px;border-bottom:1px solid rgba(255,255,255,.04)}
-.svt tr:last-child td{border-bottom:none}
+/* ── GANTT ── */
+.gantt{margin-bottom:18px}
+.grow{display:grid;grid-template-columns:110px 1fr 60px;
+  align-items:center;gap:10px;margin-bottom:6px}
+.glabel{font-family:var(--fb);font-size:11px;font-weight:500;color:var(--tx2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.gtrack{height:18px;background:var(--bg);border-radius:3px;
+  position:relative;overflow:visible;border:1px solid var(--bd)}
+.gbar{position:absolute;height:100%;border-radius:3px;display:flex;
+  align-items:center;padding:0 6px;font-size:10px;font-weight:600;
+  white-space:nowrap;overflow:hidden;transition:opacity .14s;
+  font-family:var(--fm);min-width:6px}
+.gbar:hover{opacity:.85}
+.gbar.ok{background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.4);color:var(--ok)}
+.gbar.wn{background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.4);color:var(--wn)}
+.gbar.dg{background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.4);color:var(--dg)}
+.gbar-outlabel{position:absolute;left:calc(100% + 6px);font-size:10px;
+  font-family:var(--fm);font-weight:600;white-space:nowrap;
+  top:50%;transform:translateY(-50%)}
+.gdur{font-family:var(--fm);font-size:10px;font-weight:500;color:var(--tx3);
+  text-align:right;white-space:nowrap}
 
-/* MISC */
-.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
-.empty-state .big{font-size:34px;margin-bottom:10px}
-.empty-state p{font-size:12px;line-height:1.8}
-#toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 15px;font-size:11px;color:var(--text);transform:translateY(70px);opacity:0;transition:all .3s;z-index:999;pointer-events:none;max-width:280px}
+/* ── SERVICE TABLE ── */
+.svt{width:100%;border-collapse:collapse;table-layout:fixed}
+/* column widths */
+.svt col.sc-name{width:18%}
+.svt col.sc-ts{width:28%}
+.svt col.sc-dur{width:16%}
+.svt col.sc-status{width:14%}
+.svt col.sc-err{width:24%}
+.svt thead tr{background:rgba(255,255,255,.025)}
+.svt th{font-family:var(--fb);font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1.1px;color:var(--tx3);
+  padding:8px 14px;border-bottom:1px solid var(--bd);
+  white-space:nowrap;text-align:left}
+.svt tbody tr{transition:background .1s}
+.svt tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
+.svt tbody tr:hover{background:rgba(79,142,255,.06)}
+.svt tbody tr:not(:last-child) td{border-bottom:1px solid rgba(255,255,255,.04)}
+.svt td{padding:9px 14px;vertical-align:middle;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.svt td.svc-name{font-family:var(--fm);font-size:11px;font-weight:500;color:var(--tx)}
+.svt td.svc-ts{font-family:var(--fm);font-size:10px;color:var(--tx3)}
+.svt td.svc-dur{font-family:var(--fm);font-size:11px;font-weight:600}
+.svt td.svc-err{font-family:var(--fb);font-size:10px;color:var(--dg);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svt td.svc-status{font-size:11px}
+
+/* ── EMPTY STATE ── */
+.es{text-align:center;padding:52px 20px;color:var(--tx3)}
+.es .big{font-size:36px;margin-bottom:12px;opacity:.6}
+.es p{font-size:13px;line-height:1.9;font-family:var(--fb);color:var(--tx3)}
+.es strong{color:var(--tx2)}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--sf);
+  border:1px solid var(--bd2);border-radius:var(--r);
+  padding:10px 16px;font-size:12px;font-family:var(--fb);font-weight:500;
+  color:var(--tx);transform:translateY(60px);opacity:0;
+  transition:all .25s;z-index:999;pointer-events:none;max-width:280px;
+  box-shadow:var(--shadow-md)}
 #toast.show{transform:none;opacity:1}
-#toast.ok{border-color:var(--ok);color:var(--ok)}
-#toast.err{border-color:var(--danger);color:var(--danger)}
+#toast.ok{border-color:rgba(34,197,94,.4);color:var(--ok)}
+#toast.err{border-color:rgba(239,68,68,.4);color:var(--dg)}
+
+/* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--surface)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.sdiv{border:none;border-top:1px solid var(--border);margin:7px 0 14px}
-.chev{display:inline-block;transition:transform .2s;color:var(--muted)}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--tx3)}
+
+.sdiv{border:none;border-top:1px solid var(--bd);margin:8px 0 14px}
+.chev{display:inline-block;transition:transform .18s;color:var(--tx3);font-size:13px}
 .chev.open{transform:rotate(90deg)}
-.ll{color:var(--muted);font-size:9px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+
+/* ── TIMELINE BARS ── */
+.tl-wrap{margin-bottom:18px}
+.tl-row{display:flex;align-items:center;gap:10px;margin-bottom:5px;min-height:22px}
+.tl-label{width:120px;flex-shrink:0;font-family:var(--fb);font-size:11px;font-weight:500;color:var(--tx2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-track{flex:1;height:20px;background:var(--bg);border-radius:3px;border:1px solid var(--bd);overflow:hidden}
+.tl-bar{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:7px;font-family:var(--fm);font-size:10px;font-weight:600;white-space:nowrap;min-width:4px}
+.tl-bar.ok{background:rgba(34,197,94,.3);border-right:2px solid rgba(34,197,94,.7);color:var(--ok)}
+.tl-bar.wn{background:rgba(245,158,11,.28);border-right:2px solid rgba(245,158,11,.7);color:var(--wn)}
+.tl-bar.dg{background:rgba(239,68,68,.28);border-right:2px solid rgba(239,68,68,.7);color:var(--dg)}
+.tl-dur{width:60px;flex-shrink:0;font-family:var(--fm);font-size:10px;font-weight:600;text-align:right;white-space:nowrap}
+
+/* ── PERF PANEL ── */
+#perf-panel{display:none;margin-bottom:16px}
+#perf-panel.visible{display:block}
+.perf-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;
+  background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+  padding:12px 18px;cursor:pointer;transition:border-color .2s,background .2s;
+  box-shadow:var(--shadow)}
+.perf-toggle:hover{border-color:var(--ac);background:rgba(79,142,255,.04)}
+.perf-toggle-left{display:flex;align-items:center;gap:10px}
+.perf-toggle-title{font-family:var(--fh);font-size:13px;font-weight:700;color:var(--tx);letter-spacing:-.1px}
+.perf-toggle-sub{font-family:var(--fb);font-size:11px;color:var(--tx3);margin-left:4px}
+.perf-toggle-icon{font-size:15px}
+.perf-body{background:var(--sf);border:1px solid var(--bd);border-top:none;
+  border-radius:0 0 var(--r) var(--r);padding:20px 22px;
+  box-shadow:var(--shadow);overflow:hidden;
+  max-height:0;transition:max-height .35s ease,padding .3s ease;padding-top:0;padding-bottom:0}
+.perf-body.open{max-height:2000px;padding-top:20px;padding-bottom:22px}
+.perf-toggle.open{border-radius:var(--r) var(--r) 0 0;border-bottom-color:transparent}
+
+/* sort + metric tabs */
+.chart-toolbar{display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.chart-tabs{display:flex;gap:4px;background:var(--sf2);border:1px solid var(--bd);
+  border-radius:6px;padding:3px}
+.chart-tab{padding:5px 14px;border-radius:4px;border:none;cursor:pointer;
+  font-family:var(--fb);font-size:11px;font-weight:600;color:var(--tx3);
+  background:transparent;transition:all .15s}
+.chart-tab.active{background:var(--ac);color:#fff;box-shadow:0 1px 4px rgba(79,142,255,.4)}
+.chart-sort{display:flex;align-items:center;gap:6px;font-family:var(--fb);
+  font-size:11px;color:var(--tx3)}
+.chart-sort select{padding:4px 8px;font-size:11px}
+
+/* legend */
+.chart-legend{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:6px;font-family:var(--fb);
+  font-size:11px;color:var(--tx2)}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* bars */
+.chart-grid{display:flex;flex-direction:column;gap:10px}
+.chart-row{display:flex;align-items:center;gap:12px;min-height:32px}
+.chart-svc-label{width:160px;flex-shrink:0;font-family:var(--fb);font-size:12px;
+  font-weight:500;color:var(--tx);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;text-align:right}
+.chart-bars{flex:1;position:relative;height:32px;display:flex;flex-direction:column;
+  justify-content:center;gap:3px}
+/* stacked segment bar */
+.seg-bar{height:12px;border-radius:3px;display:flex;align-items:stretch;
+  overflow:hidden;background:var(--sf2);position:relative}
+.seg{height:100%;display:flex;align-items:center;justify-content:flex-end;
+  padding-right:5px;font-size:9px;font-weight:700;font-family:var(--fm);
+  white-space:nowrap;overflow:hidden;min-width:2px;transition:filter .15s}
+.seg:hover{filter:brightness(1.2)}
+.seg.s-min{background:rgba(34,197,94,.5);color:rgba(34,197,94,.9)}
+.seg.s-avg{background:rgba(79,142,255,.55);color:rgba(200,220,255,.9)}
+.seg.s-max-ext{background:rgba(245,158,11,.35);color:rgba(245,158,11,.9)}
+
+/* call count pill */
+.chart-meta{width:100px;flex-shrink:0;display:flex;align-items:center;gap:6px}
+.call-count{font-family:var(--fm);font-size:10px;color:var(--tx3)}
+.err-pill{font-family:var(--fm);font-size:10px;padding:1px 6px;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+  color:var(--dg);border-radius:3px}
+
+/* axis ticks */
+.chart-axis{display:flex;margin-left:172px;margin-bottom:6px;position:relative}
+.axis-tick{font-family:var(--fm);font-size:9px;color:var(--tx3);
+  position:absolute;transform:translateX(-50%)}
+.chart-divider{border:none;border-top:1px dashed var(--bd);margin:14px 0 18px}
+
+/* tooltip */
+.ctip{position:fixed;background:var(--sf3);border:1px solid var(--bd2);
+  border-radius:var(--r);padding:10px 14px;font-family:var(--fb);font-size:11px;
+  color:var(--tx);pointer-events:none;z-index:9999;display:none;
+  box-shadow:var(--shadow-md);min-width:180px;line-height:1.7}
+.ctip-title{font-weight:700;color:var(--ac);margin-bottom:5px;font-size:12px}
+.ctip-row{display:flex;justify-content:space-between;gap:16px}
+.ctip-val{font-family:var(--fm);font-weight:600}
+
+/* ── LIGHT THEME ── */
+body.light{
+  --bg:#f1f5f9;--sf:#ffffff;--sf2:#f8fafc;--sf3:#f1f5f9;
+  --bd:#e2e8f0;--bd2:#cbd5e1;
+  --ac:#2563eb;--ac2:#4f46e5;
+  --ok:#16a34a;--wn:#d97706;--dg:#dc2626;
+  --tx:#0f172a;--tx2:#334155;--tx3:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,.12);
+}
+body.light::before{background-image:radial-gradient(circle,rgba(37,99,235,.06) 1px,transparent 1px)}
+body.light .din{background:#f8fafc}
+body.light .dz{background:var(--sf2)}
+/* theme toggle button */
+.theme-btn{background:var(--sf2);border:1px solid var(--bd);border-radius:20px;
+  padding:5px 12px;font-family:var(--fb);font-size:11px;font-weight:500;
+  color:var(--tx2);cursor:pointer;transition:all .2s;display:flex;
+  align-items:center;gap:6px}
+.theme-btn:hover{border-color:var(--ac);color:var(--ac)}
+
+/* ── VISUALISATION TABS ── */
+.viz-panel{display:none;margin-bottom:16px}
+.viz-panel.visible{display:block}
+.viz-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+  padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow)}
+.viz-title{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--tx);
+  margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.viz-subtitle{font-family:var(--fb);font-size:10px;color:var(--tx3);font-weight:400;margin-left:8px}
+
+
+/* P95/P99 table */
+.pct-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pct-table col.pc-svc{width:22%}
+.pct-table col.pc-calls{width:10%}
+.pct-table col.pc-min{width:12%}
+.pct-table col.pc-avg{width:12%}
+.pct-table col.pc-p50{width:11%}
+.pct-table col.pc-p95{width:11%}
+.pct-table col.pc-p99{width:11%}
+.pct-table col.pc-max{width:11%}
+.pct-table th{font-family:var(--fb);font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1px;color:var(--tx3);
+  padding:7px 10px;border-bottom:1px solid var(--bd);text-align:right}
+.pct-table th:first-child{text-align:left}
+.pct-table td{font-family:var(--fm);font-size:11px;padding:8px 10px;
+  text-align:right;border-bottom:1px solid rgba(255,255,255,.04)}
+.pct-table td:first-child{font-family:var(--fb);font-size:11px;
+  font-weight:500;color:var(--tx);text-align:left}
+.pct-table tbody tr:hover{background:rgba(79,142,255,.05)}
+.pct-table tbody tr:last-child td{border-bottom:none}
+
+/* Trend tooltip */
+#trend-tip{position:fixed;background:var(--sf3);border:1px solid var(--bd2);
+  border-radius:6px;padding:8px 12px;font-family:var(--fb);font-size:11px;
+  color:var(--tx);pointer-events:none;z-index:9999;display:none;
+  box-shadow:var(--shadow-md);line-height:1.8;min-width:160px}
+
+/* Export button in trace detail */
+.export-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;
+  border-radius:4px;border:1px solid var(--bd2);background:var(--sf3);
+  color:var(--tx2);font-family:var(--fb);font-size:10px;font-weight:500;
+  cursor:pointer;transition:all .15s;text-decoration:none}
+.export-btn:hover{border-color:var(--ac);color:var(--ac)}
+/* Keyboard hint */
+.kb-hint{font-family:var(--fm);font-size:9px;color:var(--tx3);
+  display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap}
+.kbd{background:var(--sf2);border:1px solid var(--bd2);border-radius:3px;
+  padding:1px 5px;font-size:9px;color:var(--tx2)}
+/* Focus ring for keyboard nav */
+tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
+
 </style>
 </head>
 <body>
@@ -154,48 +459,59 @@ tbody td{padding:8px 10px;vertical-align:middle;font-size:11px}
     <div class="logo-icon">⚡</div>
     <div>
       <div class="logo-text">LPT <span>Log Analyser</span></div>
-      <div style="color:var(--muted);font-size:9px;margin-top:2px">Round Trip · Trace Dashboard</div>
+      <div class="logo-sub">Round Trip · Trace Dashboard</div>
     </div>
   </div>
-  <div class="header-meta">
-    <div id="hdr-date">—</div>
-    <div id="hdr-count" style="color:var(--accent)">No data loaded</div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="kb-hint" id="kb-hint" style="display:none">
+      <span><span class="kbd">J</span><span class="kbd">K</span> navigate</span>
+      <span><span class="kbd">Enter</span> expand</span>
+      <span><span class="kbd">Esc</span> close</span>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+    <div class="hm">
+      <div id="hdr-date">—</div>
+      <div id="hdr-count" style="color:var(--ac);font-weight:600">No data loaded</div>
+    </div>
   </div>
 </header>
 
 <!-- LOAD -->
 <div class="card">
-  <div class="card-title">Load Log Data</div>
-  <div class="load-grid">
+  <div class="ct">Load Log Data</div>
+  <div class="lg">
     <div>
       <div class="ll">Bus Log (oer_bus.log)</div>
-      <div class="drop-zone" id="drop-bus">
+      <div class="dz" id="drop-bus" style="padding:32px 16px">
         <input type="file" id="file-bus" accept=".log,.txt"/>
-        <div class="drop-icon">📄</div>
-        <div class="drop-label"><strong>Drop bus log here</strong>or click to browse</div>
-        <div id="bus-badge" style="display:none" class="file-badge">✓ Loaded</div>
+        <div class="dz-icon">📄</div>
+        <div class="dz-label"><strong>Drop bus log here</strong><span>or click to browse · .log / .txt</span></div>
+        <div id="bus-badge" style="display:none" class="fbadge">✓ Loaded</div>
       </div>
-      <textarea id="paste-bus" style="margin-top:8px" placeholder="…or paste bus log content here" rows="3"></textarea>
     </div>
     <div>
       <div class="ll">Access Log (oer_access.log)</div>
-      <div class="drop-zone" id="drop-access">
+      <div class="dz" id="drop-access" style="padding:32px 16px">
         <input type="file" id="file-access" accept=".log,.txt"/>
-        <div class="drop-icon">📋</div>
-        <div class="drop-label"><strong>Drop access log here</strong>or click to browse</div>
-        <div id="access-badge" style="display:none" class="file-badge">✓ Loaded</div>
+        <div class="dz-icon">📋</div>
+        <div class="dz-label"><strong>Drop access log here</strong><span>or click to browse · .log / .txt</span></div>
+        <div id="access-badge" style="display:none" class="fbadge">✓ Loaded</div>
       </div>
-      <textarea id="paste-access" style="margin-top:8px" placeholder="…or paste access log content here" rows="3"></textarea>
     </div>
   </div>
-  <div class="controls">
+
+  <!-- SIZE WARNING -->
+  <div class="warn-banner" id="size-warn"></div>
+
+  <div class="ctrl">
     <label class="cl">⚠ Warn</label>
     <input type="number" id="thresh-warn" value="500" min="1"/>
-    <span style="color:var(--muted);font-size:10px">ms</span>
-    <label class="cl" style="margin-left:6px">🔴 Critical</label>
+    <span style="color:var(--tx3);font-size:11px;font-family:var(--fm)">ms</span>
+    <label class="cl" style="margin-left:5px">🔴 Critical</label>
     <input type="number" id="thresh-crit" value="2000" min="1"/>
-    <span style="color:var(--muted);font-size:10px">ms</span>
-    <label class="cl" style="margin-left:6px">Filter</label>
+    <span style="color:var(--tx3);font-size:10px">ms</span>
+    <div class="ctrl-sep"></div>
+    <label class="cl">Filter</label>
     <select id="filter-status">
       <option value="all">All</option>
       <option value="ok">OK only</option>
@@ -203,59 +519,174 @@ tbody td{padding:8px 10px;vertical-align:middle;font-size:11px}
       <option value="danger">Critical only</option>
       <option value="error">Error only</option>
     </select>
-    <button class="btn btn-primary" onclick="analyseAll()">▶ Analyse</button>
-    <button class="btn btn-ghost" onclick="loadDemo()">Demo Data</button>
-    <button class="btn btn-ghost" onclick="clearAll()">✕ Clear</button>
-    <button class="tlink" onclick="toggleMapping()" id="mtoggle" style="margin-left:4px">⚙ Service Name Mapping</button>
+    <button class="btn bp" id="btn-analyse" onclick="startAnalyse()">▶ Analyse</button>
+    <button class="btn bg" id="btn-cancel" onclick="cancelParse()" style="display:none">✕ Cancel</button>
+    <button class="btn bg" onclick="loadDemo()">Demo Data</button>
+    <button class="btn bg" onclick="clearAll()">✕ Clear</button>
+    <button class="tl" onclick="toggleMapping()" id="mtoggle" style="margin-left:3px">⚙ Service Mapping</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="prog-wrap">
+    <div class="prog-title">
+      <span id="prog-label">Parsing logs…</span>
+      <span id="prog-stats" style="color:var(--tx3);font-size:11px;font-family:var(--fm)"></span>
+    </div>
+    <div class="prog-bars">
+      <div class="pb-row">
+        <div class="pb-label">Bus log</div>
+        <div class="pb-track"><div class="pb-fill bus" id="pb-bus"></div></div>
+        <div class="pb-pct" id="pct-bus">0%</div>
+      </div>
+      <div class="pb-row">
+        <div class="pb-label">Access log</div>
+        <div class="pb-track"><div class="pb-fill access" id="pb-access"></div></div>
+        <div class="pb-pct" id="pct-access">0%</div>
+      </div>
+    </div>
   </div>
 
   <!-- MAPPING PANEL -->
-  <div class="mapping-panel" id="mapping-panel">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-      <div style="font-size:11px;font-weight:600">Service Name Mapping
-        <span style="color:var(--muted);font-size:10px;font-weight:400;margin-left:6px">rename auto-detected names</span>
-      </div>
+  <div class="mp" id="mapping-panel">
+    <div class="mp-header">
+      <div class="mp-title">Service Name Mapping</div>
       <div style="display:flex;gap:7px">
-        <button class="btn btn-ghost btn-xs" onclick="addMappingRow()">+ Add</button>
-        <button class="btn btn-ghost btn-xs" onclick="applyMapping()">✓ Apply</button>
+        <button class="btn bg bx" onclick="addMappingRow()">+ Add Row</button>
+        <button class="btn bg bx" onclick="applyMapping()">✓ Apply</button>
       </div>
     </div>
-    <p style="color:var(--muted);font-size:10px;line-height:1.5">Auto-detected service names appear below after Analyse. Type a display name → Apply → Analyse again.</p>
-    <div class="mapping-grid" id="mapping-grid">
-      <div style="color:var(--muted);font-size:10px;padding:8px 0">Run Analyse first to populate detected services.</div>
+    <p class="mp-hint">Auto-detected service names appear below after Analyse. Type a display name on the right, click Apply, then Analyse again.</p>
+    <div class="mg" id="mapping-grid">
+      <div style="color:var(--tx3);font-size:9px;padding:7px 0">Run Analyse first.</div>
     </div>
   </div>
 </div>
+
+
 
 <!-- KPI -->
 <div class="kpi-row" id="kpi-row" style="display:none">
-  <div class="kpi"><div class="kpi-label">Total Requests</div><span class="kpi-value" id="kpi-total">0</span></div>
-  <div class="kpi"><div class="kpi-label">Avg Round Trip</div><span class="kpi-value ok" id="kpi-avg">0ms</span></div>
-  <div class="kpi"><div class="kpi-label">Max Round Trip</div><span class="kpi-value danger" id="kpi-max">0ms</span></div>
-  <div class="kpi"><div class="kpi-label">OK</div><span class="kpi-value ok" id="kpi-ok">0</span><div class="kpi-sub">below warn</div></div>
-  <div class="kpi"><div class="kpi-label">Warnings</div><span class="kpi-value warn" id="kpi-warn">0</span><div class="kpi-sub">above warn</div></div>
-  <div class="kpi"><div class="kpi-label">Critical</div><span class="kpi-value danger" id="kpi-crit">0</span><div class="kpi-sub">above critical</div></div>
-  <div class="kpi"><div class="kpi-label">Errors</div><span class="kpi-value danger" id="kpi-err">0</span><div class="kpi-sub">failed requests</div></div>
+  <div class="kpi"><div class="kpi-label">Total Requests</div><span class="kv neutral" id="kpi-total">0</span></div>
+  <div class="kpi"><div class="kpi-label">Avg Round Trip</div><span class="kv ok" id="kpi-avg">0ms</span></div>
+  <div class="kpi"><div class="kpi-label">Max Round Trip</div><span class="kv dg" id="kpi-max">0ms</span></div>
+  <div class="kpi"><div class="kpi-label">OK</div><span class="kv ok" id="kpi-ok">0</span><div class="ks">below warn</div></div>
+  <div class="kpi"><div class="kpi-label">Warnings</div><span class="kv wn" id="kpi-warn">0</span><div class="ks">above warn</div></div>
+  <div class="kpi"><div class="kpi-label">Critical</div><span class="kv dg" id="kpi-crit">0</span><div class="ks">above critical</div></div>
+  <div class="kpi"><div class="kpi-label">Errors</div><span class="kv dg" id="kpi-err">0</span><div class="ks">failed</div></div>
 </div>
+
+
+<!-- PERF PANEL -->
+<div id="perf-panel">
+  <button class="perf-toggle" id="perf-toggle-btn" onclick="togglePerfPanel()">
+    <div class="perf-toggle-left">
+      <span class="perf-toggle-icon">📊</span>
+      <span class="perf-toggle-title">Service Performance</span>
+      <span class="perf-toggle-sub" id="perf-toggle-sub">— click to expand</span>
+    </div>
+    <span class="chev" id="perf-chev">›</span>
+  </button>
+  <div class="perf-body" id="perf-body">
+    <div class="chart-toolbar">
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setMetric('avg',this)">Avg</button>
+        <button class="chart-tab" onclick="setMetric('max',this)">Max</button>
+        <button class="chart-tab" onclick="setMetric('min',this)">Min</button>
+        <button class="chart-tab" onclick="setMetric('all',this)">Min/Avg/Max</button>
+      </div>
+      <div class="chart-sort">
+        Sort by:
+        <select id="chart-sort-sel" onchange="renderChart()">
+          <option value="avg">Avg duration</option>
+          <option value="max">Max duration</option>
+          <option value="calls">Call count</option>
+          <option value="name">Service name</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-legend">
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(34,197,94,.7)"></div>Min</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(79,142,255,.7)"></div>Avg</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(245,158,11,.6)"></div>Max extension beyond avg</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(239,68,68,.7)"></div>Has errors</div>
+    </div>
+    <div id="chart-axis" class="chart-axis"></div>
+    <div id="chart-grid" class="chart-grid"></div>
+  </div>
+</div>
+<div id="ctip" class="ctip"></div>
+
+
+<!-- VIZ PANELS -->
+<div id="viz-panel" class="viz-panel">
+
+  <!-- Service Response Time chart -->
+  <div class="viz-card">
+    <div class="viz-title">
+      Service Response Time Over Time
+      <span class="viz-subtitle" id="srt-subtitle"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <label style="font-family:var(--fb);font-size:11px;color:var(--tx3)">Group by</label>
+      <select id="srt-group" onchange="renderSRT()" style="font-size:11px;padding:4px 8px">
+        <option value="minute">Minute</option>
+        <option value="second">Second</option>
+        <option value="5min">5 Minutes</option>
+      </select>
+      <div id="srt-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-left:8px"></div>
+    </div>
+    <canvas id="srt-canvas" style="width:100%;height:220px;display:block;cursor:crosshair"></canvas>
+  </div>
+
+  <!-- Percentile Table -->
+  <div class="viz-card">
+    <div class="viz-title">Service Latency Percentiles</div>
+    <div style="overflow-x:auto">
+      <table class="pct-table">
+        <colgroup>
+          <col class="pc-svc"/><col class="pc-calls"/>
+          <col class="pc-min"/><col class="pc-avg"/>
+          <col class="pc-p50"/><col class="pc-p95"/>
+          <col class="pc-p99"/><col class="pc-max"/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Service</th><th>Calls</th>
+            <th>Min</th><th>Avg</th>
+            <th>P50</th><th>P95</th><th>P99</th><th>Max</th>
+          </tr>
+        </thead>
+        <tbody id="pct-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="trend-tip"></div>
 
 <!-- TABLE -->
 <div class="card" id="results-card" style="display:none">
-  <div class="card-title">Trace Summary</div>
+  <div class="ct">Trace Summary</div>
   <div class="tfbar">
-    <input type="text" id="search-box" class="sbox" placeholder="🔍 Search trace ID or service…" oninput="filterTable()"/>
+    <input type="text" id="search-box" class="sb" placeholder="🔍 Search trace ID or service…" oninput="filterTable()"/>
     <select id="sort-col" onchange="sortTable()">
       <option value="rtt">Sort: Round Trip ↓</option>
       <option value="startTime">Sort: Start Time</option>
-      <option value="services">Sort: Service Count</option>
+      <option value="services">Sort: Bus Calls</option>
       <option value="statusClass">Sort: Status</option>
     </select>
-    <button class="btn btn-ghost btn-xs" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn bg bx" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn bg bx" id="viz-toggle-btn" onclick="toggleViz()">📈 Visualisations</button>
   </div>
   <div class="tw">
     <table>
+      <colgroup>
+        <col class="c-chev"/><col class="c-tid"/><col class="c-req"/>
+        <col class="c-time"/><col class="c-rtt"/><col class="c-calls"/>
+        <col class="c-status"/><col class="c-err"/>
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:24px"></th>
+          <th></th>
           <th onclick="sortBy('traceId')">Trace ID ⇅</th>
           <th onclick="sortBy('requestName')">Request ⇅</th>
           <th onclick="sortBy('startTime')">Start Time ⇅</th>
@@ -268,306 +699,468 @@ tbody td{padding:8px 10px;vertical-align:middle;font-size:11px}
       <tbody id="trace-tbody"></tbody>
     </table>
   </div>
-  <div id="empty-results" class="empty-state" style="display:none">
+  <div id="empty-results" class="es" style="display:none">
     <div class="big">🔍</div><p>No traces match your filter.</p>
   </div>
 </div>
 
-<div id="initial-empty" class="empty-state">
+<div id="initial-empty" class="es">
   <div class="big">📊</div>
-  <p>Upload or paste your <strong>bus log</strong> and <strong>access log</strong>,<br/>
-  set your thresholds, then click <strong>Analyse</strong>.<br/>
-  <span style="font-size:10px;display:block;margin-top:4px">Try <strong>Demo Data</strong> to see it in action.</span></p>
+  <p>Upload your <strong>bus log</strong> and <strong>access log</strong> above,<br/>
+  set thresholds, then click <strong>Analyse</strong>.<br/>
+  <span style="font-size:10px;display:block;margin-top:3px">Supports files up to 1 GB+ via streaming.</span></p>
 </div>
 
-</div><!-- /wrap -->
+</div>
 <div id="toast"></div>
 
 <script>
-// ════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════
-let busText='', accessText='', allTraces=[], sortKey='rtt', sortDir=-1;
-let serviceMap={};          // rawName → displayName
-let detectedServices=new Set();
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ══════════════════════════════════════════════════════════
+const CHUNK      = 4 * 1024 * 1024;   // 4 MB chunks
+const WARN_SIZE  = 200 * 1024 * 1024; // 200 MB → show warning
+const MAX_SIZE   = 2 * 1024 * 1024 * 1024; // 2 GB hard limit
 
-// ════════════════════════════════════════════════
+let busFile = null, accessFile = null;
+let busText = '', accessText = '';
+let allTraces = [], sortKey = 'rtt', sortDir = -1;
+let serviceMap = {}, detectedServices = new Set();
+let cancelled = false;
+
+// ══════════════════════════════════════════════════════════
 //  FILE DROP / UPLOAD
-// ════════════════════════════════════════════════
-function setupDrop(dropId,inputId,badgeId,target){
-  const drop=document.getElementById(dropId),
-        inp=document.getElementById(inputId),
-        badge=document.getElementById(badgeId);
-  const load=f=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      if(target==='bus') busText=e.target.result;
-      else accessText=e.target.result;
-      badge.style.display='inline-block';
-      badge.textContent='✓ '+f.name;
-      toast('Loaded: '+f.name,'ok');
-    };
-    r.readAsText(f);
-  };
-  inp.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0])});
-  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag-over')});
-  drop.addEventListener('dragleave',()=>drop.classList.remove('drag-over'));
-  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0])});
-}
-setupDrop('drop-bus','file-bus','bus-badge','bus');
-setupDrop('drop-access','file-access','access-badge','access');
+// ══════════════════════════════════════════════════════════
+function setupDrop(dropId, inputId, badgeId, target){
+  const drop  = document.getElementById(dropId);
+  const inp   = document.getElementById(inputId);
+  const badge = document.getElementById(badgeId);
 
-// ════════════════════════════════════════════════
+  const register = f => {
+    if(f.size > MAX_SIZE){ toast(`File too large (max 2 GB)`, 'err'); return; }
+    if(target === 'bus'){ busFile = f; busText = ''; }
+    else               { accessFile = f; accessText = ''; }
+    badge.style.display = 'inline-block';
+    badge.textContent   = '✓ ' + f.name + ' (' + fmtSize(f.size) + ')';
+    if(f.size > WARN_SIZE) showSizeWarn(f.name, f.size);
+    toast('Registered: ' + f.name, 'ok');
+  };
+
+  inp.addEventListener('change', e => { if(e.target.files[0]) register(e.target.files[0]); });
+  drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('drag-over');
+    if(e.dataTransfer.files[0]) register(e.dataTransfer.files[0]);
+  });
+}
+setupDrop('drop-bus',    'file-bus',    'bus-badge',    'bus');
+setupDrop('drop-access', 'file-access', 'access-badge', 'access');
+
+function fmtSize(b){
+  if(b < 1024)          return b + ' B';
+  if(b < 1024*1024)     return (b/1024).toFixed(1) + ' KB';
+  if(b < 1024*1024*1024)return (b/(1024*1024)).toFixed(1) + ' MB';
+  return (b/(1024*1024*1024)).toFixed(2) + ' GB';
+}
+function showSizeWarn(name, size){
+  const w = document.getElementById('size-warn');
+  w.style.display = 'block';
+  w.textContent = `⚠ Large file detected: ${name} (${fmtSize(size)}). Streaming mode will be used — parsing may take a moment.`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHUNKED FILE READER — yields text line-by-line via callback
+//  progressCb(pct 0-100), lineCb(line), doneCb()
+// ══════════════════════════════════════════════════════════
+async function streamFile(file, lineCb, progressCb){
+  const total   = file.size;
+  let   offset  = 0;
+  let   leftover = '';
+
+  while(offset < total){
+    if(cancelled) throw new Error('cancelled');
+
+    const slice = file.slice(offset, offset + CHUNK);
+    const text  = await readSlice(slice);
+    const block = leftover + text;
+    const lines = block.split('\n');
+    leftover    = lines.pop();         // last (possibly incomplete) line
+
+    for(const line of lines) lineCb(line);
+
+    offset += CHUNK;
+    progressCb(Math.min(100, Math.round((offset / total) * 100)));
+
+    // Yield to browser every chunk so UI stays responsive
+    await yieldToBrowser();
+  }
+  if(leftover) lineCb(leftover);
+  progressCb(100);
+}
+
+function readSlice(blob){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('read error'));
+    r.readAsText(blob);
+  });
+}
+function yieldToBrowser(){
+  return new Promise(res => setTimeout(res, 0));
+}
+
+// ══════════════════════════════════════════════════════════
 //  HELPERS
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function toMs(t){
   if(!t) return 0;
-  // Handle "2026-02-14 08:10:18,437" — comma-separated milliseconds
-  try{ return new Date(t.replace(',','.').replace(' ','T')).getTime()||0; }catch{return 0;}
+  try{ return new Date(t.replace(',','.').replace(' ','T')).getTime() || 0; }catch{ return 0; }
 }
 
-/**
- * Parse duration — handles all observed formats:
- *   "152 [ms]"  "69 ms"  "558[ms]"  "time=6055"  "duration=1200ms"
- *   Also: "received in : 152 [ms]"  "received in 69 ms"
- */
 function parseDur(line){
-  // "received in : 152 [ms]"  or  "received in 69 ms"
-  const recv = line.match(/received in\s*:?\s*(\d+(?:\.\d+)?)\s*\[?ms\]?/i);
+  // "received in" — value is ALWAYS ms regardless of whether unit suffix is present
+  // Handles: "received in 277"  "received in 69 ms"  "received in : 152 [ms]"
+  const recv = line.match(/received in\s*:?\s*(\d+(?:\.\d+)?)/i);
   if(recv) return Math.round(parseFloat(recv[1]));
-  // "time=6055" (access log round-trip)
-  const timeKv = line.match(/\btime=(\d+(?:\.\d+)?)\b/i);
+  // ACCESS LOG: "time=6055" (500/500 confirmed)
+  const timeKv = line.match(/(?:^|[^a-zA-Z])time=(\d+(?:\.\d+)?)/);
   if(timeKv) return Math.round(parseFloat(timeKv[1]));
-  // "duration=1200ms" or "duration=1200"
+  // Fallbacks
   const durKv = line.match(/duration=(\d+(?:\.\d+)?)\s*\[?ms?\]?/i);
   if(durKv) return Math.round(parseFloat(durKv[1]));
-  // fallback: bare number followed by [ms] or ms
-  const bare = line.match(/(\d+(?:\.\d+)?)\s*\[ms\]/i);
-  if(bare) return Math.round(parseFloat(bare[1]));
+  const bracket = line.match(/(\d+(?:\.\d+)?)\s*\[ms\]/i);
+  if(bracket) return Math.round(parseFloat(bracket[1]));
   return null;
 }
 
 /**
- * Extract service short-name from bus log class path.
+ * Extract SHORT service name from a bus log class path.
  *
- * Pattern observed:
- *   "...DOMessagingConnectionWrapper – DO"   → "DO"  (word after " – ")
- *   "...kacdata.KacDetailsImpl – KAC"        → "KAC" (word after " – ")
- *   "...basefunctions.information.adcData"   → "adcData" (last dotted segment)
- *   "...backend.connection.DOmessaging"      → "DOmessaging"
- *
- * Priority: dash label > last CamelCase segment > last dot-segment
+ * Rules (in priority order):
+ *  1. "ClassName – LABEL  received in"  → LABEL  (e.g. "KAC", "DO", "ADC")
+ *  2. "ClassName – LABEL  Response/Write/Read received" → LABEL
+ *  3. Last dotted segment of the class path  (e.g. "adcData", "DOMessagingConnectionWrapper")
+ *     → if that segment is a CamelCase Impl/Wrapper/Service class, use its prefix word
+ *     → otherwise use the segment as-is (adcData, kacdata → keep)
  */
-function extractServiceName(classPath){
-  if(!classPath) return 'Unknown';
-  // Pattern 1: "ClassName – LABEL"  (dash label is the canonical short name)
-  const dashLabel = classPath.match(/[–\-]\s+([A-Z][A-Za-z0-9]+)\s*$/);
-  if(dashLabel) return dashLabel[1].trim();
-  // Pattern 2: last segment after dot
-  const parts = classPath.split('.');
-  const last = parts[parts.length-1].trim();
-  // Strip trailing class-name noise if it ends with Impl/Wrapper/Service etc.
-  return last || classPath.trim();
-}
+// Words that can appear after "–" dash but are NOT the service name —
+// they are connector/brand/glue words specific to this logging pattern.
+// e.g. "AccountBalanceServiceImpl – Glue Account Balance Response received in"
+//       → "Glue" is a connector, real name is "AccountBalance" from classpath
+const GLUE_WORDS = new Set([
+  'read','write','response','request','message','event','call',
+  'process','data','update','result','reply','send','get','post',
+  'service','validation','error','status','info','log','glue',
+  'account','balance','order','trade','risk','liquidity','reserve',
+  'estimated','expense','ccpe','decision','position','query'
+]);
 
-function displayName(raw){
-  return serviceMap[raw] || raw;
-}
+function extractSvcName(entry){
+  // Step 1: Extract classpath name from after ">" — most reliable source
+  // e.g. "...AccountBalanceServiceImpl – Glue..." → AccountBalance
+  let classpathName = null;
+  const afterHdr = entry.match(/>\s+(\w[\w.]*\.\w+)/);
+  if(afterHdr){
+    const parts = afterHdr[1].split('.');
+    let last = parts[parts.length - 1];
+    // Strip standard Java class suffixes to get clean service name
+    last = last
+      .replace(/ServiceImpl$/i,       '')
+      .replace(/Impl$/i,              '')
+      .replace(/ConnectionWrapper$/i, '')
+      .replace(/Worker$/i,            '')
+      .replace(/Manager$/i,           '')
+      .replace(/Factory$/i,           '')
+      .replace(/Handler$/i,           '')
+      .replace(/Service$/i,           '');
+    if(!last && parts.length >= 2) last = parts[parts.length - 2];
+    classpathName = last || parts[parts.length - 1];
+  }
 
-// ════════════════════════════════════════════════
-//  BUS LOG PARSER
-//  Multi-line entries: each entry starts with a date line.
-//  Fields span multiple lines — we join them per entry.
-// ════════════════════════════════════════════════
-function parseBus(text){
-  // Split into logical entries: each starts with a timestamp
-  const entryRe = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]?\d*)/m;
-  // Split on lines that START with a date
-  const lines = text.split('\n');
-  const entries = [];
-  let current = null;
-  for(const line of lines){
-    if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(line.trim())){
-      if(current) entries.push(current);
-      current = line;
+  // Step 2: Extract dash-label — the word(s) immediately after "–" before "received in"
+  // Only trust it as the service name if it looks like a short abbreviation:
+  //   ALL CAPS (KAC, DO, ADC, DECIDE) or ≤5 chars
+  // Otherwise the classpath name is more accurate.
+  const dashRecv = entry.match(/[–—-]\s+([A-Za-z][A-Za-z0-9]+)(?:\s+[\w]+)*?\s+received in/i);
+  if(dashRecv){
+    const candidate = dashRecv[1].trim();
+    const isShortAbbrev = candidate === candidate.toUpperCase() && candidate.length <= 8;
+    const isGlue = GLUE_WORDS.has(candidate.toLowerCase());
+    // Use dash label only if it's a clear abbreviation AND not a glue word
+    if(isShortAbbrev && !isGlue) return candidate;
+  }
+
+  // Step 3: Also check ".segment – LABEL" pattern for short abbreviations
+  const dashLabel = entry.match(/\.\w+\s+[–—-]\s+([A-Za-z][A-Za-z0-9]{1,8})(?:\s|$)/);
+  if(dashLabel){
+    const candidate = dashLabel[1].trim();
+    const isShortAbbrev = candidate === candidate.toUpperCase() && candidate.length <= 8;
+    if(isShortAbbrev && !GLUE_WORDS.has(candidate.toLowerCase())) return candidate;
+  }
+
+  // Step 4: Fall back to classpath-derived name
+  if(classpathName) return classpathName;
+
+  // Last resort: word right before "received in"
+  const bfRecv = entry.match(/(\w+)\s+received in/i);
+  if(bfRecv && !GLUE_WORDS.has(bfRecv[1].toLowerCase())) return bfRecv[1];
+  return 'Unknown';
+}
+function displayName(raw){ return serviceMap[raw] || raw; }
+
+// ══════════════════════════════════════════════════════════
+//  LINE ACCUMULATOR
+//  Bus log entries can span multiple lines; we accumulate
+//  continuation lines (no leading timestamp) into the current entry.
+// ══════════════════════════════════════════════════════════
+class LineAccumulator {
+  constructor(flushCb){
+    this.buf    = null;
+    this.flush  = flushCb;
+  }
+  push(line){
+    const isTsLine = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(line.trim());
+    if(isTsLine){
+      if(this.buf !== null) this.flush(this.buf);
+      this.buf = line;
     } else {
-      if(current) current += ' ' + line.trim();
+      if(this.buf !== null) this.buf += ' ' + line.trim();
     }
   }
-  if(current) entries.push(current);
-
-  return entries.map(entry=>{
-    // Timestamp — handle comma milliseconds "08:10:18,437"
-    const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]?\d*)/);
-    if(!tsM) return null;
-    const time = tsM[1];
-
-    // TraceId
-    const trM = entry.match(/TraceId[=:]\s*([a-f0-9\-]{10,})/i);
-    const traceId = trM ? trM[1] : null;
-
-    // Request name
-    const reqM = entry.match(/Request=(\w+)/);
-    const requestName = reqM ? reqM[1] : null;
-
-    // Class path + service name
-    // The class path is the long dotted string before "– LABEL" or before "received in"
-    // It typically appears after the closing ">" of the header block
-    const classM = entry.match(/>\s+([\w.]+(?:[\w.\-]+)*)\s*(?:[–\-]\s*\w+)?\s+(?:Response|Read|Write|DO|KAC|received)/i)
-                || entry.match(/>\s+([\w.]+\.\w+)\s/);
-    const classPath = classM ? classM[1] : null;
-
-    // Full service label: try "ClassName – LABEL  received in"
-    const labelM = entry.match(/(\w+(?:\.\w+)+)\s*[–\-]\s*(\w+)\s+(?:\w+\s+)*received in/i)
-                || entry.match(/[–\-]\s*(\w+)\s+(?:\w+\s+)?received in/i);
-
-    let rawSvc;
-    if(labelM && labelM[2]){
-      rawSvc = labelM[2];          // e.g. "DO" or "KAC"
-    } else if(labelM && labelM[1]){
-      rawSvc = labelM[1];
-    } else if(classPath){
-      rawSvc = extractServiceName(classPath);
-    } else {
-      // last resort: word before "received in"
-      const beforeRecv = entry.match(/(\w+)\s+(?:\w+\s+)?received in/i);
-      rawSvc = beforeRecv ? beforeRecv[1] : 'Unknown';
-    }
-
-    detectedServices.add(rawSvc);
-
-    const dur = parseDur(entry);
-
-    // Error detection
-    const errM = entry.match(/error[=:]\s*([^\s,\]>]+)/i);
-    const errorVal = errM ? errM[1] : null;
-    const hasError = errorVal && !['none','null','-','false'].includes(errorVal.toLowerCase());
-
-    return{
-      time, traceId, requestName,
-      rawService: rawSvc,
-      service: displayName(rawSvc),
-      dur, status: hasError ? 'ERROR' : 'SUCCESS',
-      error: hasError ? errorVal : null,
-      raw: entry.slice(0,200), source:'bus'
-    };
-  }).filter(Boolean);
-}
-
-// ════════════════════════════════════════════════
-//  ACCESS LOG PARSER
-//  Key fields: request=<name>  TraceId=<id>  time=<ms>
-// ════════════════════════════════════════════════
-function parseAccess(text){
-  const lines = text.split('\n');
-  const entries = [];
-  let current = null;
-  for(const line of lines){
-    if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(line.trim())){
-      if(current) entries.push(current);
-      current = line;
-    } else {
-      if(current) current += ' ' + line.trim();
-    }
+  end(){
+    if(this.buf !== null){ this.flush(this.buf); this.buf = null; }
   }
-  if(current) entries.push(current);
-
-  return entries.map(entry=>{
-    const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]?\d*)/);
-    if(!tsM) return null;
-    const time = tsM[1];
-
-    const trM = entry.match(/TraceId[=:]\s*([a-f0-9\-]{10,})/i);
-    const traceId = trM ? trM[1] : null;
-
-    // request=OrderEntryRequest  (this IS the service/request name)
-    const reqM = entry.match(/request=(\w+)/i);
-    const requestName = reqM ? reqM[1] : 'AccessRequest';
-
-    // time=6055  ← round-trip time from access log
-    const dur = parseDur(entry);
-
-    // HTTP status
-    const httpM = entry.match(/\b(HTTP[/ ]\s*\d{3}|\d{3}\s+(?:OK|Error|Bad|Not))/i)
-               || entry.match(/status[=:]\s*(\d{3}|\w+)/i);
-    const errM = entry.match(/error[=:]\s*([^\s,\]>]+)/i);
-    const errorVal = errM ? errM[1] : null;
-    const hasError = (httpM && /[45]\d\d/.test(httpM[0])) ||
-                     (errorVal && !['none','null','-','false'].includes((errorVal||'').toLowerCase()));
-
-    detectedServices.add(requestName);
-
-    return{
-      time, traceId,
-      requestName,
-      rawService: requestName,
-      service: displayName(requestName),
-      dur, status: hasError ? 'ERROR' : 'SUCCESS',
-      error: hasError ? (errorVal||'HTTP_ERROR') : null,
-      raw: entry.slice(0,200), source:'access'
-    };
-  }).filter(Boolean);
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  BUS LOG PARSER — tuned from inspector report
+//  Timestamp : YYYY-MM-DD HH:mm:ss,SSS  (100%)
+//  TraceId   : TraceId=<UUID>            (100%)
+//  Duration  : "received in : N [ms]"   (208 lines)
+//              "received in N ms"        (176 lines)
+//  Service   : dash label / classpath    (see extractSvcName)
+//  Request   : Request=OrderEntryRequest (100%)
+//  Status    : no status= field — use ERROR log level
+// ══════════════════════════════════════════════════════════
+function parseBusEntry(entry){
+  // Only process lines containing the bus log timing signal
+  if(entry.indexOf('received in') === -1) return null;
+
+  // Timestamp — YYYY-MM-DD HH:mm:ss,SSS confirmed 100%
+  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d+)/);
+  if(!tsM) return null;
+
+  // TraceId — UUID format confirmed 100%
+  const trM = entry.match(/TraceId=([a-f0-9A-F]{8}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{12})/i)
+           || entry.match(/TraceId=([a-f0-9A-F\-]{10,})/i);
+
+  // Request name
+  const reqM = entry.match(/Request=(\w+)/);
+
+  // Duration
+  const dur = parseDur(entry);
+
+  // Service name
+  const rawSvc = extractSvcName(entry);
+  detectedServices.add(rawSvc);
+
+  // Status — no status= field; ERROR log level is the signal
+  const hasErr = entry.indexOf(' ERROR ') !== -1;
+
+  return{
+    time: tsM[1],
+    traceId: trM ? trM[1] : null,
+    requestName: reqM ? reqM[1] : null,
+    rawService: rawSvc,
+    service: displayName(rawSvc),
+    dur,
+    status: hasErr ? 'ERROR' : 'SUCCESS',
+    error: hasErr ? 'ERROR level' : null,
+    source: 'bus'
+  };
+}
+
+
+// ── Pure string field extractor — zero regex, no backtracking risk
+function extractBlockField(b, key){
+  const prefix = key + '=';
+  const s = b.indexOf(prefix);
+  if(s === -1) return null;
+  const rest = b.slice(s + prefix.length);
+  const next = rest.search(/,[a-zA-Z]+=/);
+  return (next === -1 ? rest : rest.slice(0, next)).trim();
+}
+
+function parseAccessEntry(entry){
+  // Timestamp — YYYY-MM-DD HH:mm:ss,SSS confirmed 100%
+  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d+)/);
+  if(!tsM) return null;
+
+  // TraceId — UUID format confirmed 100%
+  const trM = entry.match(/TraceId=([a-f0-9A-F]{8}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{12})/i)
+           || entry.match(/TraceId=([a-f0-9A-F\-]{10,})/i);
+
+  // Request name — capital R confirmed 100%
+  const reqM = entry.match(/Request=(\w+)/);
+  const requestName = reqM ? reqM[1] : 'AccessRequest';
+
+  // Duration — ONLY time=<ms> in access log (500/500 confirmed)
+  const timeM = entry.match(/(?:^|[^a-zA-Z])time=(\d+(?:\.\d+)?)/);
+  const dur   = timeM ? Math.round(parseFloat(timeM[1])) : null;
+
+  // Service name from classpath
+  const rawSvc = extractSvcName(entry) || requestName;
+  detectedServices.add(rawSvc);
+
+  // Status + error message — parse Status<<code=...,message=...,type=...>>
+  // Pure string ops, zero regex on block content to avoid backtracking
+  let hasErr = false;
+  let errMsg = null;
+  const statusIdx = entry.indexOf('Status<<');
+
+  if(statusIdx !== -1){
+    const closeIdx = entry.indexOf('>>', statusIdx);
+    const block    = closeIdx > statusIdx ? entry.slice(statusIdx + 8, closeIdx) : '';
+    const codeVal  = extractBlockField(block, 'code');
+    const msgVal   = extractBlockField(block, 'message');
+    const typeVal  = extractBlockField(block, 'type');
+    hasErr = typeVal ? /error/i.test(typeVal) : (codeVal ? codeVal !== '0' : false);
+    if(hasErr){
+      const prefix = codeVal ? '[' + codeVal + '] ' : '';
+      const msg    = msgVal && msgVal.length > 1 ? msgVal : 'ERROR';
+      errMsg = prefix + (msg.length > 150 ? msg.slice(0, 150) + '\u2026' : msg);
+    }
+  } else {
+    hasErr = entry.indexOf(' ERROR ') !== -1 || entry.indexOf('>ERROR<') !== -1;
+    if(hasErr) errMsg = 'ERROR';
+  }
+
+  return{
+    time: tsM[1],
+    traceId: trM ? trM[1] : null,
+    requestName,
+    rawService: rawSvc,
+    service: displayName(rawSvc),
+    dur,
+    status: hasErr ? 'ERROR' : 'SUCCESS',
+    error: errMsg,
+    source: 'access'
+  };
+}
+
+// ══════════════════════════════════════════════════════════
+//  PARALLEL STREAM PARSE — bus + access at same time
+//  busFileObj / accessFileObj : File | null
+//  busPasteText / accessPasteText : string (from textarea)
+// ══════════════════════════════════════════════════════════
+async function parseParallel(busFileObj, accessFileObj, busPasteText, accessPasteText){
+  let busEntries = [], accessEntries = [];
+  cancelled = false;
+
+  async function parseFileStream(file, accum, progressId, pctId){
+    if(!file) return;
+    await streamFile(
+      file,
+      line => { accum.push(line); },
+      pct  => setProgress(progressId, pctId, pct)
+    );
+    accum.end();
+  }
+
+  async function parseString(text, accum, progressId, pctId){
+    if(!text) return;
+    const lines = text.split('\n');
+    const total = lines.length;
+    for(let i = 0; i < total; i++){
+      if(cancelled) throw new Error('cancelled');
+      accum.push(lines[i]);
+      if(i % 5000 === 0){
+        setProgress(progressId, pctId, Math.round((i/total)*100));
+        await yieldToBrowser();
+      }
+    }
+    accum.end();
+    setProgress(progressId, pctId, 100);
+  }
+
+  const busAccum    = new LineAccumulator(e => { const p=parseBusEntry(e);    if(p) busEntries.push(p); });
+  const accessAccum = new LineAccumulator(e => { const p=parseAccessEntry(e); if(p) accessEntries.push(p); });
+
+  // File takes priority over paste text
+  const busTask    = busFileObj
+    ? parseFileStream(busFileObj,    busAccum,    'pb-bus',    'pct-bus')
+    : parseString(busPasteText,      busAccum,    'pb-bus',    'pct-bus');
+
+  const accessTask = accessFileObj
+    ? parseFileStream(accessFileObj, accessAccum, 'pb-access', 'pct-access')
+    : parseString(accessPasteText,   accessAccum, 'pb-access', 'pct-access');
+
+  await Promise.all([busTask, accessTask]);
+
+  return { busEntries, accessEntries };
+}
+
+function setProgress(barId, pctId, pct){
+  const bar = document.getElementById(barId);
+  const lbl = document.getElementById(pctId);
+  if(bar) bar.style.width = pct + '%';
+  if(lbl) lbl.textContent = pct + '%';
+}
+
+// ══════════════════════════════════════════════════════════
 //  BUILD TRACES
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function buildTraces(busEntries, accessEntries){
-  // Index access entries by traceId for O(1) lookup
   const accessByTrace = {};
   for(const e of accessEntries){
     const k = e.traceId || ('_acc_'+e.time);
     if(!accessByTrace[k]) accessByTrace[k] = [];
     accessByTrace[k].push(e);
   }
-
-  // Group bus entries by traceId
   const busMap = {};
   for(const e of busEntries){
     const k = e.traceId || ('_bus_'+e.time);
     if(!busMap[k]) busMap[k] = [];
     busMap[k].push(e);
   }
+  const W = parseInt(document.getElementById('thresh-warn').value) || 500;
+  const C = parseInt(document.getElementById('thresh-crit').value) || 2000;
+  const allKeys = new Set(
+    Object.keys(busMap).filter(k => accessByTrace[k] && accessByTrace[k].length > 0)
+  ); // Only traces present in BOTH bus + access log
 
-  const WARN = parseInt(document.getElementById('thresh-warn').value)||500;
-  const CRIT = parseInt(document.getElementById('thresh-crit').value)||2000;
+  return [...allKeys].map(k => {
+    const busCalls = (busMap[k]||[]).sort((a,b) => toMs(a.time)-toMs(b.time));
+    const accCalls = (accessByTrace[k]||[]);
 
-  // Union of all trace IDs
-  const allKeys = new Set([...Object.keys(busMap), ...Object.keys(accessByTrace)]);
-
-  return [...allKeys].map(k=>{
-    const busCalls  = (busMap[k]||[]).sort((a,b)=>toMs(a.time)-toMs(b.time));
-    const accCalls  = (accessByTrace[k]||[]);
-
-    // Round-trip time: prefer access log "time=" field (authoritative)
-    // If multiple access entries, sum or take max
-    let rtt = 0;
-    let requestName = '—';
+    // RTT: access log "time=" is authoritative — confirmed 100% coverage
+    // Fallback to bus wall-clock span only when no access entry exists
+    let rtt = 0, requestName = '—';
     if(accCalls.length){
-      // Take the access entry with the LARGEST time= value (the outer request)
       const best = accCalls.reduce((a,b)=>((b.dur||0)>(a.dur||0)?b:a), accCalls[0]);
-      rtt = best.dur || 0;
+      rtt         = best.dur || 0;
       requestName = best.requestName || best.service || '—';
     } else if(busCalls.length){
-      // Fallback: wall-clock span of bus calls + last dur
       const times = busCalls.map(c=>toMs(c.time)).filter(Boolean);
-      const minT  = Math.min(...times);
-      const last  = busCalls[busCalls.length-1];
-      rtt = (toMs(last.time) - minT) + (last.dur||0);
+      if(times.length){
+        const last = busCalls[busCalls.length-1];
+        rtt = (toMs(last.time) - Math.min(...times)) + (last.dur||0);
+      }
       requestName = busCalls[0]?.requestName || '—';
     }
 
-    const hasErr = [...busCalls,...accCalls].some(c=>c.status==='ERROR');
-    const errors = [...new Set([...busCalls,...accCalls].map(c=>c.error).filter(Boolean))];
-
-    let sc = 'ok';
-    if(hasErr) sc='danger';
-    else if(rtt>=CRIT) sc='danger';
-    else if(rtt>=WARN) sc='warn';
+    const all    = [...busCalls, ...accCalls];
+    const hasErr = all.some(c => c.status === 'ERROR');
+    const errors = [...new Set(all.map(c=>c.error).filter(Boolean))];
+    let   sc     = 'ok';
+    if(hasErr)   sc = 'danger';
+    else if(rtt>=C) sc = 'danger';
+    else if(rtt>=W) sc = 'warn';
 
     return{
-      traceId:k,
-      requestName,
+      traceId: k, requestName,
       busCalls, accCalls,
       startTime: busCalls[0]?.time || accCalls[0]?.time || '—',
       rtt, services: busCalls.length,
@@ -576,205 +1169,324 @@ function buildTraces(busEntries, accessEntries){
   });
 }
 
-// ════════════════════════════════════════════════
-//  ANALYSE
-// ════════════════════════════════════════════════
-function analyseAll(){
-  const bT = busText  || document.getElementById('paste-bus').value.trim();
-  const aT = accessText || document.getElementById('paste-access').value.trim();
-  if(!bT&&!aT){toast('Please load or paste at least one log file.','err');return}
+// ══════════════════════════════════════════════════════════
+//  ANALYSE (async, with progress + cancel)
+// ══════════════════════════════════════════════════════════
+async function startAnalyse(){
+  const hasBusFile    = !!busFile;
+  const hasAccessFile = !!accessFile;
+  if(!hasBusFile && !hasAccessFile){
+    toast('Please upload at least one log file.','err'); return;
+  }
+  const bT = '', aT = '';
+
+  // Show progress, hide analyse button
+  document.getElementById('prog-wrap').style.display  = 'block';
+  document.getElementById('btn-analyse').style.display = 'none';
+  document.getElementById('btn-cancel').style.display  = 'inline-block';
+  setProgress('pb-bus',   'pct-bus',    0);
+  setProgress('pb-access','pct-access', 0);
+  document.getElementById('prog-label').textContent = 'Parsing logs…';
+  document.getElementById('prog-stats').textContent = '';
   detectedServices.clear();
-  const bus    = bT ? parseBus(bT)    : [];
-  const access = aT ? parseAccess(aT) : [];
-  allTraces = buildTraces(bus, access);
-  if(!allTraces.length){toast('No trace entries found — check log format.','err');return}
-  populateMappingGrid();
-  renderKPIs(); renderTable();
-  document.getElementById('kpi-row').style.display='grid';
-  document.getElementById('results-card').style.display='block';
-  document.getElementById('initial-empty').style.display='none';
-  document.getElementById('hdr-date').textContent=new Date().toLocaleString();
-  document.getElementById('hdr-count').textContent=allTraces.length+' traces analysed';
-  toast(allTraces.length+' traces loaded.','ok');
+
+  const t0 = Date.now();
+  try{
+    // Pass file objects (or null) + paste text — parseParallel chooses file over paste
+    const { busEntries, accessEntries } = await parseParallel(
+      busFile    || null,
+      accessFile || null,
+      bT, aT  // empty — file-only mode
+    );
+
+    const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+    document.getElementById('prog-label').textContent = 'Building traces…';
+    await yieldToBrowser();
+
+    allTraces = buildTraces(busEntries, accessEntries);
+    if(!allTraces.length){ toast('No trace entries found — check log format.','err'); resetProgress(); return; }
+
+    document.getElementById('prog-stats').textContent =
+      `${busEntries.length.toLocaleString()} bus + ${accessEntries.length.toLocaleString()} access entries in ${elapsed}s`;
+
+    populateMappingGrid();
+    renderKPIs(); renderTable();
+    document.getElementById('kpi-row').style.display     = 'grid';
+    document.getElementById('results-card').style.display = 'block';
+    document.getElementById('initial-empty').style.display = 'none';
+    document.getElementById('hdr-date').textContent  = new Date().toLocaleString();
+    document.getElementById('hdr-count').textContent = allTraces.length.toLocaleString() + ' traces';
+    toast(allTraces.length.toLocaleString()+' traces in '+elapsed+'s','ok');
+
+  } catch(err){
+    if(err.message === 'cancelled') toast('Parse cancelled.','err');
+    else { toast('Error: '+err.message,'err'); console.error(err); }
+  }
+
+  resetProgress();
 }
 
-// ════════════════════════════════════════════════
+function cancelParse(){
+  cancelled = true;
+  resetProgress();
+  toast('Cancelling…','err');
+}
+
+function resetProgress(){
+  document.getElementById('prog-wrap').style.display   = 'none';
+  document.getElementById('btn-analyse').style.display = 'inline-block';
+  document.getElementById('btn-cancel').style.display  = 'none';
+}
+
+// ══════════════════════════════════════════════════════════
 //  KPIs
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function renderKPIs(){
-  const W=parseInt(document.getElementById('thresh-warn').value)||500;
-  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
-  const rtts=allTraces.map(t=>t.rtt).filter(v=>v>0);
-  const avg=rtts.length?Math.round(rtts.reduce((a,b)=>a+b,0)/rtts.length):0;
-  const max=rtts.length?Math.max(...rtts):0;
-  document.getElementById('kpi-total').textContent=allTraces.length;
-  document.getElementById('kpi-avg').textContent=avg+'ms';
-  document.getElementById('kpi-max').textContent=max+'ms';
-  document.getElementById('kpi-ok').textContent  =allTraces.filter(t=>!t.hasError&&t.rtt<W).length;
-  document.getElementById('kpi-warn').textContent =allTraces.filter(t=>!t.hasError&&t.rtt>=W&&t.rtt<C).length;
-  document.getElementById('kpi-crit').textContent =allTraces.filter(t=>!t.hasError&&t.rtt>=C).length;
-  document.getElementById('kpi-err').textContent  =allTraces.filter(t=>t.hasError).length;
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const rtts = allTraces.map(t=>t.rtt).filter(v=>v>0);
+  const avg  = rtts.length ? Math.round(rtts.reduce((a,b)=>a+b,0)/rtts.length) : 0;
+  const max  = rtts.length ? Math.max(...rtts) : 0;
+  document.getElementById('kpi-total').textContent = allTraces.length.toLocaleString();
+  document.getElementById('kpi-avg').textContent   = avg+'ms';
+  document.getElementById('kpi-max').textContent   = max+'ms';
+  document.getElementById('kpi-ok').textContent    = allTraces.filter(t=>!t.hasError&&t.rtt<W).length;
+  document.getElementById('kpi-warn').textContent  = allTraces.filter(t=>!t.hasError&&t.rtt>=W&&t.rtt<C).length;
+  document.getElementById('kpi-crit').textContent  = allTraces.filter(t=>!t.hasError&&t.rtt>=C).length;
+  document.getElementById('kpi-err').textContent   = allTraces.filter(t=>t.hasError).length;
+  // Show/update perf panel
+  const hasData = allTraces.length > 0;
+  document.getElementById('perf-panel').classList.toggle('visible', hasData);
+  if(hasData){
+    const sc = buildServiceStats().length;
+    document.getElementById('perf-toggle-sub').textContent =
+      '\u2014 ' + sc + ' service' + (sc!==1?'s':'') + ' detected · click to expand';
+  }
+  if(perfOpen) renderChart();
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  TABLE
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function getFiltered(){
-  const q=document.getElementById('search-box').value.toLowerCase();
-  const s=document.getElementById('filter-status').value;
+  const q = document.getElementById('search-box').value.toLowerCase();
+  const s = document.getElementById('filter-status').value;
   return allTraces.filter(t=>{
-    const mq=!q||t.traceId.toLowerCase().includes(q)||
-              t.requestName.toLowerCase().includes(q)||
-              t.busCalls.some(c=>c.service.toLowerCase().includes(q));
-    const ms=s==='all'||
-      (s==='ok'&&t.statusClass==='ok')||
-      (s==='warn'&&t.statusClass==='warn')||
-      (s==='danger'&&t.statusClass==='danger'&&!t.hasError)||
-      (s==='error'&&t.hasError);
-    return mq&&ms;
+    const mq = !q || t.traceId.toLowerCase().includes(q) ||
+               t.requestName.toLowerCase().includes(q) ||
+               t.busCalls.some(c=>c.service.toLowerCase().includes(q));
+    const ms = s==='all' ||
+      (s==='ok'     && t.statusClass==='ok') ||
+      (s==='warn'   && t.statusClass==='warn') ||
+      (s==='danger' && t.statusClass==='danger' && !t.hasError) ||
+      (s==='error'  && t.hasError);
+    return mq && ms;
   });
 }
 
 function renderTable(){
-  const data=getFiltered().sort((a,b)=>{
-    let va=a[sortKey],vb=b[sortKey];
-    if(typeof va==='string')va=va.toLowerCase();
-    if(typeof vb==='string')vb=vb.toLowerCase();
+  const data = getFiltered().sort((a,b)=>{
+    let va=a[sortKey], vb=b[sortKey];
+    if(typeof va==='string') va=va.toLowerCase();
+    if(typeof vb==='string') vb=vb.toLowerCase();
     return va<vb?sortDir:va>vb?-sortDir:0;
   });
-  const tbody=document.getElementById('trace-tbody');tbody.innerHTML='';
-  document.getElementById('empty-results').style.display=data.length?'none':'block';
-  const W=parseInt(document.getElementById('thresh-warn').value)||500;
-  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
+  const tbody = document.getElementById('trace-tbody');
+  tbody.innerHTML = '';
+  document.getElementById('empty-results').style.display = data.length ? 'none' : 'block';
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
 
   data.forEach(trace=>{
-    const dc=trace.hasError?'ddanger':trace.rtt>=C?'ddanger':trace.rtt>=W?'dwarn':'dok';
-    const sid=trace.traceId.length>22?trace.traceId.slice(0,22)+'…':trace.traceId;
-    const safe=trace.traceId.replace(/[^a-zA-Z0-9]/g,'_');
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td style="width:24px;text-align:center"><span class="chev" id="chev-${safe}">›</span></td>
+    const dc   = trace.hasError?'ddg':trace.rtt>=C?'ddg':trace.rtt>=W?'dwn':'dok';
+    const sid  = trace.traceId;  // full trace ID — column is wide enough
+    const safe = trace.traceId.replace(/[^a-zA-Z0-9]/g,'_');
+    const tr   = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="width:22px;text-align:center"><span class="chev" id="chev-${safe}">›</span></td>
       <td class="tid" title="${trace.traceId}">${sid}</td>
-      <td style="color:var(--accent2);font-size:10px">${trace.requestName}</td>
-      <td style="color:var(--muted);font-size:10px">${trace.startTime}</td>
+      <td style="color:var(--ac2);font-size:11px;font-family:var(--fb)">${trace.requestName}</td>
+      <td style="color:var(--tx3);font-size:11px;font-family:var(--fm)">${trace.startTime}</td>
       <td class="${dc}" style="font-weight:700">${trace.rtt>0?trace.rtt+' ms':'—'}</td>
-      <td style="color:var(--muted)">${trace.services}</td>
-      <td><span class="badge ${trace.statusClass==='ok'?'bok':trace.statusClass==='warn'?'bwarn':'bdanger'}">${trace.hasError?'ERROR':trace.statusClass.toUpperCase()}</span></td>
-      <td style="color:var(--danger);font-size:10px">${trace.errors.slice(0,2).join(', ')||'—'}</td>`;
-    tr.addEventListener('click',()=>toggleDetail(trace,tr,safe));
+      <td style="color:var(--tx3)">${trace.services}</td>
+      <td><span class="badge ${trace.statusClass==='ok'?'bok':trace.statusClass==='warn'?'bwn':'bdg'}">${trace.hasError?'ERROR':trace.statusClass.toUpperCase()}</span></td>
+      <td style="color:var(--dg);font-size:9px">${trace.errors.slice(0,2).join(', ')||'—'}</td>`;
+    tr.addEventListener('click', ()=>toggleDetail(trace, tr, safe));
     tbody.appendChild(tr);
-    const dr=document.createElement('tr');dr.classList.add('drow');dr.id='det-'+safe;dr.style.display='none';
-    const dd=document.createElement('td');dd.colSpan=8;dr.appendChild(dd);tbody.appendChild(dr);
+    const dr = document.createElement('tr');
+    dr.classList.add('drow'); dr.id='det-'+safe; dr.style.display='none';
+    const dd = document.createElement('td'); dd.colSpan=8; dr.appendChild(dd);
+    tbody.appendChild(dr);
   });
 }
 
-function toggleDetail(trace,tr,safe){
-  const dr=document.getElementById('det-'+safe);
-  const ch=document.getElementById('chev-'+safe);
-  if(dr.style.display!=='none'){
-    dr.style.display='none';tr.classList.remove('expanded');if(ch)ch.classList.remove('open');return;
+function toggleDetail(trace, tr, safe){
+  const dr = document.getElementById('det-'+safe);
+  const ch = document.getElementById('chev-'+safe);
+  if(dr.style.display !== 'none'){
+    dr.style.display='none'; tr.classList.remove('expanded'); if(ch)ch.classList.remove('open'); return;
   }
   document.querySelectorAll('.drow').forEach(r=>r.style.display='none');
   document.querySelectorAll('tr.expanded').forEach(r=>r.classList.remove('expanded'));
   document.querySelectorAll('.chev.open').forEach(c=>c.classList.remove('open'));
-  tr.classList.add('expanded');if(ch)ch.classList.add('open');
-  dr.style.display='';dr.firstElementChild.innerHTML=buildDetail(trace);
+  tr.classList.add('expanded'); if(ch) ch.classList.add('open');
+  dr.style.display=''; dr.firstElementChild.innerHTML=buildDetail(trace);
 }
 
 function buildDetail(trace){
-  const W=parseInt(document.getElementById('thresh-warn').value)||500;
-  const C=parseInt(document.getElementById('thresh-crit').value)||2000;
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const rttCls = trace.rtt>=C?'ddg':trace.rtt>=W?'dwn':'dok';
 
-  // ── Access log summary bar ──
-  let accessBar='';
-  if(trace.accCalls.length){
-    const best=trace.accCalls.reduce((a,b)=>((b.dur||0)>(a.dur||0)?b:a),trace.accCalls[0]);
-    const rttCls=best.dur>=C?'ddanger':best.dur>=W?'dwarn':'dok';
-    accessBar=`<div class="access-summary">
-      <div><div class="as-label">Request</div><div class="as-val" style="color:var(--accent2)">${best.service}</div></div>
-      <div><div class="as-label">Round Trip (access log)</div><div class="as-val ${rttCls}">${best.dur!=null?best.dur+' ms':'—'}</div></div>
-      <div><div class="as-label">Time</div><div class="as-val" style="font-size:12px;color:var(--muted)">${best.time}</div></div>
-      <div><div class="as-label">Status</div><span class="badge ${best.status==='ERROR'?'bdanger':'bok'}">${best.status}</span></div>
+  // ── Header ──────────────────────────────────────────────
+  const header = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="export-btn" onclick="exportTrace(event,'${trace.traceId}')">⬇ Export Report</button>
+    </div>
+    <div class="dtitle">
+      <span class="dtitle-traceid">${trace.traceId}</span>
+      <span class="dtitle-sep">·</span>
+      <span class="dtitle-rtt-label">Round Trip</span>
+      <span class="dtitle-rtt-val ${rttCls}">${trace.rtt>0?trace.rtt+' ms':'—'}</span>
+      <span class="dtitle-calls">${trace.services} bus call${trace.services!==1?'s':''}</span>
     </div>`;
+
+  // ── Access summary card ──────────────────────────────────
+  let accessBar = '';
+  if(trace.accCalls.length){
+    const best   = trace.accCalls.reduce((a,b)=>((b.dur||0)>(a.dur||0)?b:a), trace.accCalls[0]);
+    const rCls   = best.dur>=C?'ddg':best.dur>=W?'dwn':'dok';
+    const stCls  = best.status==='ERROR'?'bdg':'bok';
+    accessBar = `
+      <div class="asum">
+        <div class="asum-cell">
+          <div class="asl">Request</div>
+          <div class="asv" style="color:var(--ac2)">${best.service}</div>
+        </div>
+        <div class="asum-cell">
+          <div class="asl">Round Trip Time</div>
+          <div class="asv ${rCls}">${best.dur!=null?best.dur+' ms':'—'}</div>
+        </div>
+        <div class="asum-cell">
+          <div class="asl">Logged At</div>
+          <div class="asv mono">${best.time}</div>
+        </div>
+        <div class="asum-cell">
+          <div class="asl">Status</div>
+          <span class="badge ${stCls}" style="font-size:10px;padding:3px 9px;font-weight:600">${best.status}</span>
+        </div>
+      </div>`;
   }
 
-  // ── Gantt for bus calls ──
-  let ganttHTML='<div style="color:var(--muted);font-size:10px;padding:6px 0">No bus log calls for this trace.</div>';
+  // ── Timeline bars ──────────────────────────────────────
+  let ganttHTML = `<div style="color:var(--tx3);font-family:var(--fb);font-size:11px;
+    padding:12px 0;text-align:center">No bus log calls for this trace.</div>`;
+
   if(trace.busCalls.length){
-    const times=trace.busCalls.map(c=>toMs(c.time)).filter(v=>v>0);
-    const minT=Math.min(...times);
-    const maxEnd=Math.max(...trace.busCalls.map(c=>toMs(c.time)+(c.dur||0)));
-    const total=maxEnd-minT||1;
-    ganttHTML=trace.busCalls.map(c=>{
-      const s=toMs(c.time)-minT;
-      const d=c.dur||0;
-      const left=(s/total)*100;
-      const width=Math.max((d/total)*100,2);
-      const cls=c.status==='ERROR'?'danger':d>=C?'danger':d>=W?'warn':'ok';
-      const durCls=cls==='ok'?'dok':cls==='warn'?'dwarn':'ddanger';
-      return`<div class="grow">
-        <div class="glabel" title="${c.rawService}">${c.service}</div>
-        <div class="gtrack"><div class="gbar ${cls}" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%">${d?d+'ms':''}</div></div>
-        <div class="gdur ${durCls}">${d>0?d+' ms':'—'}</div>
+    const maxDur = Math.max(...trace.busCalls.map(c=>c.dur||0), 1);
+    const times  = trace.busCalls.map(c=>toMs(c.time)).filter(v=>v>0);
+    const minT   = Math.min(...times);
+    const spanMs = Math.max(toMs(trace.busCalls[trace.busCalls.length-1].time) - minT, 1);
+
+    const rows = trace.busCalls.map(c=>{
+      const d      = c.dur || 0;
+      // Offset: how far into the total time span this call starts (0–80%)
+      const offPct = Math.min(((toMs(c.time) - minT) / spanMs) * 80, 78);
+      // Width: proportional to this call's duration vs the longest call (up to remaining space)
+      const widPct = Math.max((d / maxDur) * (100 - offPct), d > 0 ? 1.5 : 0);
+      const cls    = c.status==='ERROR'?'dg':d>=C?'dg':d>=W?'wn':'ok';
+      const dc2    = cls==='ok'?'dok':cls==='wn'?'dwn':'ddg';
+      const durTxt = d > 0 ? d+' ms' : '—';
+      // Never show label inside bar — always show in right column only
+      const barLabel = '';
+      return `<div class="tl-row">
+        <div class="tl-label" title="${c.rawService||c.service}">${c.service}</div>
+        <div class="tl-track">
+          <div class="tl-bar ${cls}"
+            style="margin-left:${offPct.toFixed(1)}%;width:${widPct.toFixed(1)}%">
+            ${barLabel}
+          </div>
+        </div>
+        <div class="tl-dur ${dc2}">${durTxt}</div>
       </div>`;
     }).join('');
+
+    ganttHTML = `<div class="tl-wrap">${rows}</div>`;
   }
 
-  // ── Bus calls table ──
-  const busRows=trace.busCalls.map(c=>{
-    const durCls=c.status==='ERROR'?'ddanger':(c.dur||0)>=C?'ddanger':(c.dur||0)>=W?'dwarn':'dok';
-    return`<tr>
-      <td title="${c.rawService}">${c.service}</td>
-      <td style="color:var(--muted);font-size:9px">${c.time}</td>
-      <td class="${durCls}">${c.dur!=null&&c.dur>0?c.dur+' ms':'—'}</td>
-      <td><span class="badge ${c.status==='ERROR'?'bdanger':'bok'}">${c.status}</span></td>
-      <td style="color:var(--danger);font-size:9px">${c.error||'—'}</td>
+    // ── Service table — bus calls + access entry ─────────────
+  const allRows = [...trace.busCalls, ...trace.accCalls];
+  const busRows = allRows.map(c=>{
+    const dc2   = c.status==='ERROR'?'ddg':(c.dur||0)>=C?'ddg':(c.dur||0)>=W?'dwn':'dok';
+    const stCls = c.status==='ERROR'?'bdg':'bok';
+    const srcBadge = c.source==='access'
+      ? `<span style="font-size:9px;background:rgba(124,92,252,.15);color:var(--ac2);border:1px solid rgba(124,92,252,.3);border-radius:3px;padding:1px 5px;margin-right:4px">ACC</span>`
+      : '';
+    return `<tr>
+      <td class="svc-name" title="${c.rawService||c.service}">${srcBadge}${c.service}</td>
+      <td class="svc-ts">${c.time}</td>
+      <td class="svc-dur ${dc2}">${c.dur!=null&&c.dur>0?c.dur+' ms':'—'}</td>
+      <td class="svc-status"><span class="badge ${stCls}">${c.status}</span></td>
+      <td class="svc-err">${c.error||'—'}</td>
     </tr>`;
   }).join('');
 
-  const rttCls=trace.rtt>=C?'ddanger':trace.rtt>=W?'dwarn':'dok';
-  return`<div class="dinner">
-    <div class="dtitle">▸ TraceId: ${trace.traceId} &nbsp;·&nbsp; Round Trip: <span class="${rttCls}">${trace.rtt>0?trace.rtt+' ms':'—'}</span></div>
+  return `<div class="din">
+    ${header}
     ${accessBar}
-    <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Bus Service Timeline</div>
+    <div style="font-family:var(--fb);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx3);margin-bottom:8px">Timeline</div>
     <div class="gantt">${ganttHTML}</div>
-    <hr class="sdiv"/>
+    <div style="font-family:var(--fb);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--tx3);margin-bottom:10px;margin-top:20px">Service Detail</div>
     <table class="svt">
-      <thead><tr><th>Service</th><th>Timestamp</th><th>Duration</th><th>Status</th><th>Error</th></tr></thead>
-      <tbody>${busRows||'<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:10px">No bus log calls found</td></tr>'}</tbody>
+      <colgroup>
+        <col class="sc-name"/><col class="sc-ts"/>
+        <col class="sc-dur"/><col class="sc-status"/><col class="sc-err"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Timestamp</th>
+          <th>Duration</th>
+          <th>Status</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>${busRows||
+        '<tr><td colspan="5" style="color:var(--tx3);text-align:center;padding:14px;font-family:var(--fb);font-size:11px">No bus calls found.</td></tr>'
+      }</tbody>
     </table>
   </div>`;
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  MAPPING
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function toggleMapping(){
   const p=document.getElementById('mapping-panel');
   p.classList.toggle('open');
   document.getElementById('mtoggle').textContent=
-    p.classList.contains('open')?'✕ Close Mapping':'⚙ Service Name Mapping';
+    p.classList.contains('open')?'✕ Close Mapping':'⚙ Service Mapping';
 }
 function populateMappingGrid(){
   const g=document.getElementById('mapping-grid');
-  if(!detectedServices.size){g.innerHTML='<div style="color:var(--muted);font-size:10px;padding:8px 0">No services detected.</div>';return}
+  if(!detectedServices.size){g.innerHTML='<div style="color:var(--tx3);font-size:9px;padding:7px 0">No services detected.</div>';return}
   g.innerHTML=[...detectedServices].sort().map(raw=>`
-    <div class="mapping-row">
-      <div class="mapping-raw" title="${raw}">${raw}</div>
-      <div class="mapping-arrow">→</div>
-      <input class="mapping-input" data-raw="${raw}" placeholder="Display name…" value="${serviceMap[raw]||''}"/>
+    <div class="mr">
+      <div class="mr-raw" title="${raw}">${raw}</div>
+      <span style="color:var(--bd);font-size:10px">→</span>
+      <input class="mi" data-raw="${raw}" placeholder="Display name…" value="${serviceMap[raw]||''}"/>
     </div>`).join('');
 }
 function addMappingRow(){
   const g=document.getElementById('mapping-grid');
-  const row=document.createElement('div');row.className='mapping-row';
-  row.innerHTML=`<input class="mapping-input" placeholder="Raw string…" style="width:140px"/>
-    <div class="mapping-arrow">→</div>
-    <input class="mapping-input" placeholder="Display name…" style="width:140px"/>`;
-  g.appendChild(row);
+  const r=document.createElement('div');r.className='mr';
+  r.innerHTML=`<input class="mi" placeholder="Raw string…" style="width:120px"/>
+    <span style="color:var(--bd);font-size:10px">→</span>
+    <input class="mi" placeholder="Display name…"/>`;
+  g.appendChild(r);
 }
 function applyMapping(){
-  document.querySelectorAll('#mapping-grid .mapping-row').forEach(row=>{
+  document.querySelectorAll('#mapping-grid .mr').forEach(row=>{
     const inputs=row.querySelectorAll('input');
     if(inputs.length===1){const raw=inputs[0].dataset.raw,val=inputs[0].value.trim();if(raw)serviceMap[raw]=val||raw}
     else if(inputs.length===2){const raw=inputs[0].value.trim(),val=inputs[1].value.trim();if(raw&&val){serviceMap[raw]=val;detectedServices.add(raw)}}
@@ -782,9 +1494,9 @@ function applyMapping(){
   toast('Mapping applied — click Analyse to refresh.','ok');
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  SORT / FILTER / EXPORT / CLEAR
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function filterTable(){renderTable()}
 function sortTable(){sortKey=document.getElementById('sort-col').value;renderTable()}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}renderTable()}
@@ -799,43 +1511,606 @@ function exportCSV(){
 }
 
 function clearAll(){
-  busText='';accessText='';
-  ['paste-bus','paste-access'].forEach(id=>document.getElementById(id).value='');
+  busFile=null; accessFile=null; busText=''; accessText='';
   ['bus-badge','access-badge'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('size-warn').style.display='none';
   document.getElementById('kpi-row').style.display='none';
   document.getElementById('results-card').style.display='none';
   document.getElementById('initial-empty').style.display='block';
   document.getElementById('hdr-count').textContent='No data loaded';
-  allTraces=[];detectedServices.clear();toast('Cleared.','ok');
+  allTraces=[]; detectedServices.clear(); toast('Cleared.','ok');
 }
 
-// ════════════════════════════════════════════════
-//  DEMO DATA — matches real log format from image
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  DEMO DATA — exact real log format
+// ══════════════════════════════════════════════════════════
 function loadDemo(){
-  document.getElementById('paste-bus').value=
-`2026-02-14 08:10:18,274 147444126 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 DisposalEntitledId= BoId=905039882600 BoType=SecAccountId UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 69 ms
-2026-02-14 08:10:18,437 147444289 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 DisposalEntitledId= BoId=905039882600 BoType=SecAccountId UserId=AB1237> ordering.order.com.ab.dffmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 152 [ms]
-2026-02-14 08:10:19,100 147444400 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 DisposalEntitledId= BoId=905039882600 BoType=SecAccountId UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.adcData.AdcDetailsImpl – ADC Read Request received in 88 ms
-2026-02-14 08:10:19,300 147444550 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.validation.RiskCheckService – RISK Validation received in 245 ms
-2026-02-14 08:10:19,600 147444700 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.persist.OrderPersistenceService – OPS Write received in 310 ms
-2026-02-14 08:10:20,050 147445100 [ExecuteThread: abcdef_server_ext2-042] INFO <Request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 120 ms
-2026-02-14 08:10:20,500 147445200 [ExecuteThread: abcdef_server_ext2-042] INFO <Request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.order.com.ab.dffmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 3200 [ms]`;
+  const busDemoText =
+`2026-03-16 12:00:58,660 950303411 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 69 ms
+2026-03-16 12:00:58,820 950303412 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.order.com.ab.cosmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 152 [ms]
+2026-03-16 12:00:59,100 950303413 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.adcData.AdcDetailsImpl – ADC Read Request received in 88 ms
+2026-03-16 12:00:59,300 950303414 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.liquiditydata.LiquidityServiceImpl – Liquidity Read Request received in 245 ms
+2026-03-16 12:00:59,600 950303415 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.persist.OrderPersistenceServiceImpl – OPS Write received in : 310 [ms]
+2026-03-16 12:01:00,050 950303501 [ExecuteThread: cosmos_server_ext1-63] INFO <Request=OrderEntryRequest TraceId=891af3fc-4363-41c5-a146-b8979c53f50f ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 120 ms
+2026-03-16 12:01:00,500 950303502 [ExecuteThread: cosmos_server_ext1-63] INFO <Request=OrderEntryRequest TraceId=891af3fc-4363-41c5-a146-b8979c53f50f ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.order.com.ab.cosmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 3200 [ms]`
+  const accessDemoText =
+`2026-03-16 12:01:00,950 950305701 [ExecuteThread: cosmos_server_ext1-62] INFO <Request=OrderEntryRequest TraceId=6a583436-4b13-4723-a045-b38f79540299 ConsumerId=83135-1 EntityId=ABK UserId=AB1237> com.db.cosmos.ordering.OrderServicesWorker time=1290
+2026-03-16 12:01:02,059 950305702 [ExecuteThread: cosmos_server_ext1-63] INFO <Request=OrderEntryRequest TraceId=891af3fc-4363-41c5-a146-b8979c53f50f ConsumerId=99001-2 EntityId=DEF UserId=XY9900> com.db.cosmos.ordering.OrderServicesWorker time=4200`
 
-  document.getElementById('paste-access').value=
-`2026-02-14 08:10:20,600 [AccessLog] request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 EntityId=ABK UserId=AB1237 status=SUCCESS time=6055
-2026-02-14 08:10:24,100 [AccessLog] request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 EntityId=DEF UserId=XY9900 status=SUCCESS time=4200`;
+  busFile   = new File([busDemoText],   'demo_bus.log',    {type:'text/plain'});
+  accessFile= new File([accessDemoText],'demo_access.log', {type:'text/plain'});
+  busText=''; accessText='';
 
-  busText='';accessText='';toast('Demo loaded — click Analyse.','ok');
+  document.getElementById('bus-badge').style.display='inline-block';
+  document.getElementById('bus-badge').textContent='✓ demo_bus.log (demo)';
+  document.getElementById('access-badge').style.display='inline-block';
+  document.getElementById('access-badge').textContent='✓ demo_access.log (demo)';
+  toast('Demo loaded — click Analyse.','ok');
 }
 
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  TOAST
-// ════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
+//  SERVICE PERFORMANCE CHART
+// ════════════════════════════════════════════════════════
+let chartMetric = 'avg';
+let perfOpen    = false;
+
+function togglePerfPanel(){
+  perfOpen = !perfOpen;
+  document.getElementById('perf-body').classList.toggle('open', perfOpen);
+  document.getElementById('perf-toggle-btn').classList.toggle('open', perfOpen);
+  document.getElementById('perf-chev').classList.toggle('open', perfOpen);
+  if(perfOpen) renderChart();
+}
+
+function setMetric(m, btn){
+  chartMetric = m;
+  document.querySelectorAll('.chart-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+
+function buildServiceStats(){
+  // Gather all bus calls across all traces
+  const map = {}; // serviceName → {durs:[], errors:0, calls:0}
+  for(const trace of allTraces){
+    for(const c of trace.busCalls){
+      const name = c.service || c.rawService || 'Unknown';
+      if(!map[name]) map[name] = {durs:[], errors:0, calls:0};
+      map[name].calls++;
+      if(c.dur != null && c.dur > 0) map[name].durs.push(c.dur);
+      if(c.status === 'ERROR') map[name].errors++;
+    }
+  }
+  return Object.entries(map).map(([name, d])=>{
+    const sorted = [...d.durs].sort((a,b)=>a-b);
+    const sum    = sorted.reduce((a,b)=>a+b,0);
+    return{
+      name,
+      durs:   sorted,
+      calls:  d.calls,
+      errors: d.errors,
+      min:    sorted.length ? sorted[0]               : 0,
+      avg:    sorted.length ? Math.round(sum/sorted.length) : 0,
+      max:    sorted.length ? sorted[sorted.length-1] : 0,
+      p95:    sorted.length ? sorted[Math.floor(sorted.length*.95)] : 0,
+      p99:    sorted.length ? sorted[Math.floor(sorted.length*.99)] : 0,
+    };
+  });
+}
+
+function renderChart(){
+  if(!allTraces.length) return;
+
+  const W    = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C    = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const sort = document.getElementById('chart-sort-sel').value;
+  let stats  = buildServiceStats();
+
+  if(!stats.length){
+    document.getElementById('chart-grid').innerHTML =
+      '<div style="color:var(--tx3);font-family:var(--fb);font-size:12px;padding:12px 0">No bus log service data found.</div>';
+    return;
+  }
+
+  // Sort
+  stats.sort((a,b)=>{
+    if(sort==='avg')   return b.avg  - a.avg;
+    if(sort==='max')   return b.max  - a.max;
+    if(sort==='calls') return b.calls- a.calls;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Scale: max value determines 100% bar width
+  const refVal = Math.max(...stats.map(s=>s.max), 1);
+
+  // Axis ticks (5 ticks)
+  const axisEl = document.getElementById('chart-axis');
+  axisEl.style.height = '16px';
+  const axisWidth = document.getElementById('chart-grid').clientWidth - 172 - 112;
+  const ticks = [0, 0.25, 0.5, 0.75, 1.0];
+  axisEl.innerHTML = ticks.map(t=>{
+    const val = Math.round(refVal * t);
+    return `<span class="axis-tick" style="left:${Math.round(axisWidth*t)}px">${val>999?(val/1000).toFixed(1)+'s':val+'ms'}</span>`;
+  }).join('');
+
+  // Render rows
+  const grid = document.getElementById('chart-grid');
+  grid.innerHTML = '';
+
+  const tip = document.getElementById('ctip');
+
+  stats.forEach(s=>{
+    const barColor = s.errors > 0 ? 'rgba(239,68,68,.55)' :
+                     s.avg >= C   ? 'rgba(239,68,68,.5)'   :
+                     s.avg >= W   ? 'rgba(245,158,11,.5)'  :
+                                    'rgba(79,142,255,.55)';
+    const barColorLight = s.errors > 0 ? 'rgba(239,68,68,.25)' :
+                          s.avg >= C   ? 'rgba(239,68,68,.25)'  :
+                          s.avg >= W   ? 'rgba(245,158,11,.22)' :
+                                         'rgba(34,197,94,.25)';
+
+    const minPct  = (s.min / refVal) * 100;
+    const avgPct  = (s.avg / refVal) * 100;
+    const maxPct  = (s.max / refVal) * 100;
+    const avgOnly = (s.avg / refVal) * 100;
+
+    // Build the bar(s) based on selected metric
+    let barHTML = '';
+
+    if(chartMetric === 'all'){
+      // Three layered segments: min (green) | avg extension (blue) | max extension (amber)
+      const minW   = minPct;
+      const avgExt = Math.max(0, avgPct - minPct);
+      const maxExt = Math.max(0, maxPct - avgPct);
+      barHTML = `<div class="seg-bar" style="width:100%;height:14px">
+        <div class="seg s-min"   style="width:${minW.toFixed(2)}%"   title="min">${s.min>0?s.min+'ms':''}</div>
+        <div class="seg s-avg"   style="width:${avgExt.toFixed(2)}%" title="avg"></div>
+        <div class="seg s-max-ext" style="width:${maxExt.toFixed(2)}%" title="max"></div>
+      </div>`;
+    } else if(chartMetric === 'avg'){
+      const pct = (s.avg/refVal)*100;
+      const col = s.errors>0?'rgba(239,68,68,.55)':s.avg>=C?'rgba(239,68,68,.5)':s.avg>=W?'rgba(245,158,11,.5)':'rgba(79,142,255,.55)';
+      barHTML = `<div class="seg-bar" style="width:100%;height:14px">
+        <div class="seg" style="width:${pct.toFixed(2)}%;background:${col};color:rgba(255,255,255,.8)">${s.avg}ms</div>
+      </div>`;
+    } else if(chartMetric === 'max'){
+      const pct = (s.max/refVal)*100;
+      const col = s.max>=C?'rgba(239,68,68,.55)':s.max>=W?'rgba(245,158,11,.5)':'rgba(79,142,255,.45)';
+      barHTML = `<div class="seg-bar" style="width:100%;height:14px">
+        <div class="seg" style="width:${pct.toFixed(2)}%;background:${col};color:rgba(255,255,255,.8)">${s.max}ms</div>
+      </div>`;
+    } else { // min
+      const pct = (s.min/refVal)*100;
+      barHTML = `<div class="seg-bar" style="width:100%;height:14px">
+        <div class="seg" style="width:${Math.max(pct,0.5).toFixed(2)}%;background:rgba(34,197,94,.55);color:rgba(255,255,255,.8)">${s.min}ms</div>
+      </div>`;
+    }
+
+    // Threshold marker lines inside bar area (drawn as pseudo-elements via inline style)
+    const warnPos  = Math.min((W/refVal)*100, 100);
+    const critPos  = Math.min((C/refVal)*100, 100);
+    const markers  = `
+      <div style="position:absolute;left:${warnPos.toFixed(1)}%;top:0;bottom:0;
+        width:1px;background:rgba(245,158,11,.5);pointer-events:none"></div>
+      <div style="position:absolute;left:${critPos.toFixed(1)}%;top:0;bottom:0;
+        width:1px;background:rgba(239,68,68,.5);pointer-events:none"></div>`;
+
+    const errPill  = s.errors > 0
+      ? `<span class="err-pill">${s.errors} err</span>` : '';
+    const callsLbl = `<span class="call-count">${s.calls} call${s.calls!==1?'s':''}</span>`;
+
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+    row.innerHTML = `
+      <div class="chart-svc-label" title="${s.name}">${s.name}</div>
+      <div class="chart-bars" style="position:relative">
+        ${barHTML}
+        ${markers}
+      </div>
+      <div class="chart-meta">${callsLbl}${errPill}</div>`;
+
+    // Tooltip
+    row.addEventListener('mousemove', e=>{
+      const avgColor = s.avg>=C?'var(--dg)':s.avg>=W?'var(--wn)':'var(--ok)';
+      const maxColor = s.max>=C?'var(--dg)':s.max>=W?'var(--wn)':'var(--ok)';
+      tip.style.display='block';
+      tip.style.left=(e.clientX+14)+'px';
+      tip.style.top =(e.clientY-10)+'px';
+      tip.innerHTML=`<div class="ctip-title">${s.name}</div>
+        <div class="ctip-row"><span>Min</span><span class="ctip-val" style="color:var(--ok)">${s.min} ms</span></div>
+        <div class="ctip-row"><span>Avg</span><span class="ctip-val" style="color:${avgColor}">${s.avg} ms</span></div>
+        <div class="ctip-row"><span>Max</span><span class="ctip-val" style="color:${maxColor}">${s.max} ms</span></div>
+        <div class="ctip-row"><span>P95</span><span class="ctip-val" style="color:var(--tx2)">${s.p95} ms</span></div>
+        <div class="ctip-row"><span>Calls</span><span class="ctip-val" style="color:var(--tx)">${s.calls}</span></div>
+        <div class="ctip-row"><span>Errors</span><span class="ctip-val" style="color:var(--dg)">${s.errors}</span></div>`;
+    });
+    row.addEventListener('mouseleave',()=>tip.style.display='none');
+
+    grid.appendChild(row);
+
+    // Divider after each row
+    const div = document.createElement('hr');
+    div.className = 'chart-divider';
+    grid.appendChild(div);
+  });
+
+  // Update subtitle
+  document.getElementById('perf-toggle-sub').textContent =
+    `— ${stats.length} services · sorted by ${sort}`;
+}
+
+// perf panel updates handled inside renderKPIs above
+
+
+// ════════════════════════════════════════════════════════════════
+//  THEME TOGGLE
+// ════════════════════════════════════════════════════════════════
+let lightMode = false;
+function toggleTheme(){
+  lightMode = !lightMode;
+  document.body.classList.toggle('light', lightMode);
+  document.getElementById('theme-btn').textContent = lightMode ? '🌙 Dark' : '☀ Light';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  KEYBOARD NAVIGATION
+// ════════════════════════════════════════════════════════════════
+let kbIndex = -1;
+document.addEventListener('keydown', e => {
+  if(!allTraces.length) return;
+  const rows = [...document.querySelectorAll('#trace-tbody tr:not(.drow)')];
+  if(!rows.length) return;
+  if(e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown'){
+    e.preventDefault();
+    kbIndex = Math.min(kbIndex + 1, rows.length - 1);
+    highlightKb(rows);
+  } else if(e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp'){
+    e.preventDefault();
+    kbIndex = Math.max(kbIndex - 1, 0);
+    highlightKb(rows);
+  } else if(e.key === 'Enter'){
+    if(kbIndex >= 0 && rows[kbIndex]) rows[kbIndex].click();
+  } else if(e.key === 'Escape'){
+    document.querySelectorAll('.drow').forEach(r => r.style.display = 'none');
+    document.querySelectorAll('tr.expanded').forEach(r => r.classList.remove('expanded'));
+    document.querySelectorAll('.chev.open').forEach(c => c.classList.remove('open'));
+  }
+});
+function highlightKb(rows){
+  rows.forEach(r => r.classList.remove('kb-focus'));
+  if(rows[kbIndex]){
+    rows[kbIndex].classList.add('kb-focus');
+    rows[kbIndex].scrollIntoView({block:'nearest'});
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  VISUALISATIONS TOGGLE
+// ════════════════════════════════════════════════════════════════
+let vizOpen = false;
+function toggleViz(){
+  vizOpen = !vizOpen;
+  document.getElementById('viz-panel').classList.toggle('visible', vizOpen);
+  document.getElementById('viz-toggle-btn').textContent =
+    vizOpen ? '📈 Hide Visualisations' : '📈 Visualisations';
+  if(vizOpen){
+    try{ renderSRT(); }catch(e){ console.warn('srt',e); }
+    try{ renderPercentiles(); }catch(e){ console.warn('percentiles',e); }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SERVICE RESPONSE TIME CHART — multi-line, one line per service
+// ════════════════════════════════════════════════════════════════
+const SRT_COLORS = [
+  '#4f8eff','#22c55e','#f59e0b','#ef4444','#a78bfa',
+  '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6'
+];
+
+function renderSRT(){
+  const canvas = document.getElementById('srt-canvas');
+  const legend = document.getElementById('srt-legend');
+  if(!canvas || !allTraces.length) return;
+
+  const W    = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C    = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const grp  = document.getElementById('srt-group').value;
+  const tip  = document.getElementById('trend-tip');
+
+  // ── Collect all service calls with timestamps ──────────────────
+  // For each service, build a time-bucketed array of avg durations
+  const svcMap = {};   // svcName → { bucket_key → [durations] }
+
+  for(const trace of allTraces){
+    for(const c of trace.busCalls){
+      if(!c.dur || c.dur <= 0) continue;
+      const svc = c.service || c.rawService || 'Unknown';
+      const ms  = toMs(c.time);
+      if(!ms) continue;
+      // Bucket key
+      const d   = new Date(ms);
+      // Use local time components to match the timestamp timezone in the logs
+      const yy  = d.getFullYear();
+      const mo  = String(d.getMonth()+1).padStart(2,'0');
+      const dd  = String(d.getDate()).padStart(2,'0');
+      const hh  = String(d.getHours()).padStart(2,'0');
+      const mm  = String(d.getMinutes()).padStart(2,'0');
+      const ss  = String(d.getSeconds()).padStart(2,'0');
+      const pfx = yy+'-'+mo+'-'+dd+' '+hh+':';
+      let bkey;
+      if(grp === 'second')      bkey = pfx+mm+':'+ss;
+      else if(grp === '5min'){  const m5=String(Math.floor(d.getMinutes()/5)*5).padStart(2,'0'); bkey = pfx+m5; }
+      else                      bkey = pfx+mm; // minute
+      if(!svcMap[svc]) svcMap[svc] = {};
+      if(!svcMap[svc][bkey]) svcMap[svc][bkey] = [];
+      svcMap[svc][bkey].push(c.dur);
+    }
+  }
+
+  const svcNames = Object.keys(svcMap).sort();
+  if(!svcNames.length){ canvas.style.display='none'; return; }
+  canvas.style.display='block';
+
+  // ── Build sorted bucket list ───────────────────────────────────
+  const allBuckets = [...new Set(
+    Object.values(svcMap).flatMap(m => Object.keys(m))
+  )].sort();
+
+  if(allBuckets.length < 2){ 
+    document.getElementById('srt-subtitle').textContent = '— not enough data points';
+    return;
+  }
+
+  // ── Canvas setup ──────────────────────────────────────────────
+  const dpr  = window.devicePixelRatio||1;
+  const rect = canvas.getBoundingClientRect();
+  if(!rect.width) return;
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W2=rect.width, H2=rect.height;
+  const PAD={t:16, r:20, b:36, l:56};
+  const cW=W2-PAD.l-PAD.r, cH=H2-PAD.t-PAD.b;
+
+  // ── Max value for Y scale ─────────────────────────────────────
+  let maxVal = 0;
+  const svcAvgs = {};
+  svcNames.forEach(svc=>{
+    svcAvgs[svc] = allBuckets.map(b=>{
+      const durs = svcMap[svc][b];
+      if(!durs) return null;
+      return Math.round(durs.reduce((a,x)=>a+x,0)/durs.length);
+    });
+    svcAvgs[svc].forEach(v=>{ if(v!=null && v>maxVal) maxVal=v; });
+  });
+  maxVal = Math.ceil(maxVal*1.1/100)*100 || 500;
+
+  const xStep = allBuckets.length > 1 ? cW/(allBuckets.length-1) : cW;
+  const toX   = i  => PAD.l + i*xStep;
+  const toY   = v  => PAD.t + cH - (v/maxVal)*cH;
+
+  // ── Background + grid ─────────────────────────────────────────
+  ctx.clearRect(0,0,W2,H2);
+
+  // Y grid lines + labels
+  const yTicks = 5;
+  for(let i=0;i<=yTicks;i++){
+    const v = Math.round(maxVal*(i/yTicks));
+    const y = toY(v);
+    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W2-PAD.r,y); ctx.stroke();
+    ctx.fillStyle='#64748b'; ctx.font=`9px IBM Plex Mono,monospace`; ctx.textAlign='right';
+    ctx.fillText(v>999?(v/1000).toFixed(1)+'s':v+'ms', PAD.l-4, y+3);
+  }
+
+  // Threshold lines
+  const drawLine=(val,col)=>{
+    if(val>maxVal) return;
+    ctx.setLineDash([4,3]); ctx.strokeStyle=col; ctx.lineWidth=1; ctx.globalAlpha=.6;
+    ctx.beginPath(); ctx.moveTo(PAD.l,toY(val)); ctx.lineTo(W2-PAD.r,toY(val)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  };
+  drawLine(W,'#f59e0b'); drawLine(C,'#ef4444');
+
+  // ── Draw each service line ─────────────────────────────────────
+  svcNames.forEach((svc,si)=>{
+    const col  = SRT_COLORS[si % SRT_COLORS.length];
+    const avgs = svcAvgs[svc];
+    ctx.strokeStyle=col; ctx.lineWidth=grp==='second'?0.8:1.8; ctx.lineJoin='round';
+    ctx.beginPath();
+    let started=false;
+    avgs.forEach((v,i)=>{
+      if(v==null){ started=false; return; }
+      if(!started){ ctx.moveTo(toX(i),toY(v)); started=true; }
+      else          ctx.lineTo(toX(i),toY(v));
+    });
+    ctx.stroke();
+    // Dots at data points — skip for second-level (too many points, clutters chart)
+    if(grp !== 'second'){
+      avgs.forEach((v,i)=>{
+        if(v==null) return;
+        ctx.beginPath(); ctx.arc(toX(i),toY(v),2,0,Math.PI*2);
+        ctx.fillStyle=col; ctx.fill();
+      });
+    }
+  });
+
+  // ── X axis labels (max 10 visible) ───────────────────────────
+  ctx.fillStyle='#64748b'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
+  const step = Math.max(1, Math.floor(allBuckets.length/10));
+  allBuckets.forEach((b,i)=>{
+    if(i%step!==0) return;
+    // Bucket key format: "YYYY-MM-DD HH:mm" or "YYYY-MM-DD HH:mm:ss"
+    const lbl = b.split(' ')[1] || b.slice(11);
+    ctx.fillText(lbl, toX(i), H2-8);
+  });
+
+  // ── Legend ────────────────────────────────────────────────────
+  legend.innerHTML = svcNames.map((svc,si)=>`
+    <div style="display:flex;align-items:center;gap:5px;font-family:var(--fb);font-size:10px;color:var(--tx2)">
+      <div style="width:18px;height:2px;background:${SRT_COLORS[si%SRT_COLORS.length]};border-radius:1px"></div>
+      ${svc}
+    </div>`).join('');
+
+  document.getElementById('srt-subtitle').textContent =
+    '— ' + svcNames.length + ' services · ' + allBuckets.length + ' time buckets';
+
+  // ── Hover tooltip ─────────────────────────────────────────────
+  canvas.onmousemove = e=>{
+    const br  = canvas.getBoundingClientRect();
+    const mx  = e.clientX - br.left - PAD.l;
+    const idx = Math.max(0, Math.min(allBuckets.length-1, Math.round(mx/xStep)));
+    const bkt = allBuckets[idx];
+    let rows = svcNames.map((svc,si)=>{
+      const v = svcAvgs[svc][idx];
+      if(v==null) return '';
+      const col=SRT_COLORS[si%SRT_COLORS.length];
+      const vc = v>=C?'var(--dg)':v>=W?'var(--wn)':'var(--ok)';
+      return `<div style="display:flex;justify-content:space-between;gap:14px">
+        <span style="color:${col}">${svc}</span>
+        <span style="font-family:var(--fm);font-weight:600;color:${vc}">${v} ms</span>
+      </div>`;
+    }).filter(Boolean).join('');
+    if(!rows) return;
+    tip.style.display='block';
+    tip.style.left=(e.clientX+14)+'px';
+    tip.style.top =(e.clientY-10)+'px';
+    tip.innerHTML=`<div style="font-family:var(--fm);font-size:10px;color:var(--ac);margin-bottom:6px">${bkt.slice(11)}</div>${rows}`;
+  };
+  canvas.onmouseleave=()=>tip.style.display='none';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PERCENTILE TABLE  (P50, P95, P99)
+// ════════════════════════════════════════════════════════════════
+function renderPercentiles(){
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const stats = buildServiceStats().sort((a,b) => b.avg - a.avg);
+  const tbody  = document.getElementById('pct-tbody');
+  if(!stats.length){ tbody.innerHTML='<tr><td colspan="8" style="color:var(--tx3);text-align:center;padding:12px">No data.</td></tr>'; return; }
+
+  tbody.innerHTML = stats.map(s => {
+    const sorted = s.durs || [];
+    const p50 = sorted[Math.floor(sorted.length*.50)] || 0;
+    const p95 = s.p95 || 0;
+    const p99 = s.p99 || 0;
+    const col = v => v>=C?'color:var(--dg)':v>=W?'color:var(--wn)':'color:var(--ok)';
+    return `<tr>
+      <td>${s.name}</td>
+      <td>${s.calls}</td>
+      <td style="${col(s.min)}">${s.min}</td>
+      <td style="${col(s.avg)}">${s.avg}</td>
+      <td style="${col(p50)}">${p50}</td>
+      <td style="${col(p95)}">${p95}</td>
+      <td style="${col(p99)}">${p99}</td>
+      <td style="${col(s.max)}">${s.max}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  EXPORT TRACE REPORT  (self-contained HTML)
+// ════════════════════════════════════════════════════════════════
+function exportTrace(e, traceId){
+  e.stopPropagation();
+  const trace = allTraces.find(t => t.traceId === traceId);
+  if(!trace){ toast('Trace not found','err'); return; }
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const rttCls = trace.rtt>=C?'#ef4444':trace.rtt>=W?'#f59e0b':'#22c55e';
+
+  const accRow = trace.accCalls.length ? (() => {
+    const b = trace.accCalls[0];
+    return `<tr><td>${b.service}</td><td>${b.time}</td>
+      <td style="color:${b.dur>=C?'#ef4444':b.dur>=W?'#f59e0b':'#22c55e'};font-weight:600">${b.dur ?? '—'} ms</td>
+      <td>${b.status}</td><td>${b.error||'—'}</td></tr>`;
+  })() : '';
+
+  const busRowsHtml = trace.busCalls.map(c => {
+    const col = c.dur>=C?'#ef4444':c.dur>=W?'#f59e0b':'#22c55e';
+    return `<tr><td>${c.service}</td><td>${c.time}</td>
+      <td style="color:${col};font-weight:600">${c.dur ?? '—'} ms</td>
+      <td>${c.status}</td><td>${c.error||'—'}</td></tr>`;
+  }).join('');
+
+  const ganttRows = trace.busCalls.map(c => {
+    const times = trace.busCalls.map(x=>toMs(x.time)).filter(Boolean);
+    const minT  = Math.min(...times);
+    const maxE  = Math.max(...trace.busCalls.map(x=>toMs(x.time)+(x.dur||0)));
+    const tot   = maxE - minT || 1;
+    const left  = ((toMs(c.time)-minT)/tot*100).toFixed(1);
+    const ww    = Math.max(((c.dur||0)/tot*100), 1).toFixed(1);
+    const col   = c.dur>=C?'#ef4444':c.dur>=W?'#f59e0b':'#22c55e44';
+    const bCol  = c.dur>=C?'#ef4444':c.dur>=W?'#f59e0b':'#22c55e';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:110px;text-align:right;font-size:11px;font-weight:500;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.service}</div>
+      <div style="flex:1;height:18px;background:#1a1d29;border-radius:3px;position:relative;border:1px solid #252838">
+        <div style="position:absolute;height:100%;left:${left}%;width:${ww}%;background:${col};border:1px solid ${bCol};border-radius:3px;display:flex;align-items:center;padding:0 4px;font-size:10px;font-weight:600;color:${bCol};overflow:hidden">${c.dur||''}</div>
+      </div>
+      <div style="width:58px;text-align:right;font-size:10px;font-weight:600;color:#94a3b8">${c.dur>0?c.dur+' ms':'—'}</div>
+    </div>`;
+  }).join('');
+
+    const reportHtml = [
+    '<!DOCTYPE html><html lang="en"><head>',
+    '<meta charset="UTF-8"/><title>Trace Report \u00b7 '+trace.traceId+'</title>',
+    '<style>',
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{background:#0b0d14;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;font-size:13px;padding:32px;max-width:1100px;margin:0 auto}',
+    'h1{font-size:16px;font-weight:700;margin-bottom:4px}',
+    'h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#64748b;margin:24px 0 10px}',
+    '.meta{display:flex;gap:24px;flex-wrap:wrap;background:#13151f;border:1px solid #252838;border-radius:8px;padding:14px 18px;margin-bottom:20px}',
+    '.meta-item label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;display:block;margin-bottom:4px}',
+    '.meta-item .val{font-size:13px;font-weight:600}',
+    'table{width:100%;border-collapse:collapse;font-size:11px}',
+    'th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;padding:7px 12px;border-bottom:1px solid #252838;text-align:left}',
+    'td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#94a3b8}',
+    'td:first-child{color:#e2e8f0;font-weight:500}',
+    'tr:last-child td{border-bottom:none}',
+    'tr:nth-child(even){background:rgba(255,255,255,.02)}',
+    '.footer{margin-top:32px;font-size:10px;color:#64748b;border-top:1px solid #252838;padding-top:14px}',
+    '</style></head><body>',
+    '<h1>Trace Report</h1>',
+    '<p style="color:#64748b;font-size:11px;margin-bottom:20px">Generated '+new Date().toLocaleString()+'</p>',
+    '<div class="meta">',
+    '<div class="meta-item"><label>Trace ID</label><div class="val" style="font-family:monospace;font-size:11px;color:#4f8eff">'+trace.traceId+'</div></div>',
+    '<div class="meta-item"><label>Request</label><div class="val" style="color:#6c63ff">'+trace.requestName+'</div></div>',
+    '<div class="meta-item"><label>Start Time</label><div class="val" style="font-family:monospace;font-size:11px">'+trace.startTime+'</div></div>',
+    '<div class="meta-item"><label>Round Trip</label><div class="val" style="color:'+rttCls+'">'+trace.rtt+' ms</div></div>',
+    '<div class="meta-item"><label>Bus Calls</label><div class="val">'+trace.services+'</div></div>',
+    '<div class="meta-item"><label>Status</label><div class="val" style="color:'+(trace.hasError?'#ef4444':'#22c55e')+'">'+(trace.hasError?'ERROR':'SUCCESS')+'</div></div>',
+    '</div>',
+    trace.accCalls.length ? '<h2>Access Log Entry</h2><table><thead><tr><th>Request</th><th>Timestamp</th><th>RTT</th><th>Status</th><th>Error</th></tr></thead><tbody>'+accRow+'</tbody></table>' : '',
+    '<h2>Bus Service Timeline</h2>',
+    '<div style="margin-bottom:20px">'+ganttRows+'</div>',
+    '<h2>Service Detail</h2>',
+    '<table><thead><tr><th>Service</th><th>Timestamp</th><th>Duration</th><th>Status</th><th>Error</th></tr></thead>',
+    '<tbody>'+busRowsHtml+'</tbody></table>',
+    '<div class="footer">LPT Log Analyser \u00b7 Warn threshold: '+W+'ms \u00b7 Critical: '+C+'ms</div>',
+    '</body></html>'
+  ].join('');
+
+  const blob = new Blob([reportHtml], {type:'text/html'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'trace_'+trace.traceId.slice(0,8)+'_'+new Date().toISOString().slice(0,10)+'.html';
+  a.click();
+  toast('Report exported.','ok');
+}
+
 let tt;
 function toast(msg,type=''){
-  const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');
-  clearTimeout(tt);tt=setTimeout(()=>el.className='',3200);
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='show '+(type||'');
+  clearTimeout(tt);
+  tt=setTimeout(()=>el.className='',3200);
 }
 document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 </script>
