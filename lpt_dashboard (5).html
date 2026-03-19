@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<link rel="stylesheet" href="https://fonts.bunny.net/css?family=inter:400,500,600|ibm-plex-mono:400,500,600|plus-jakarta-sans:600,700,800&display=swap"/>
 <title>LPT Log Analyser</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet"/>
+
 <style>
 :root{
   --bg:#0b0d14;--sf:#13151f;--sf2:#1a1d29;--sf3:#1f2231;
@@ -12,9 +13,9 @@
   --ac:#4f8eff;--ac2:#6c63ff;
   --ok:#22c55e;--wn:#f59e0b;--dg:#ef4444;
   --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#64748b;
-  --fh:'Plus Jakarta Sans',sans-serif;
-  --fb:'Inter',sans-serif;
-  --fm:'IBM Plex Mono',monospace;
+  --fh:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --fb:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --fm:'IBM Plex Mono','Cascadia Code','Fira Code','Consolas',monospace;
   --r:8px;--r2:6px;--r3:4px;
   --shadow:0 1px 3px rgba(0,0,0,.4);
   --shadow-md:0 4px 16px rgba(0,0,0,.5);
@@ -192,7 +193,7 @@ tbody td{padding:10px 12px;vertical-align:middle;font-size:12px;font-family:var(
 @keyframes sd{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
 /* trace header */
-.dtitle{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+.dtitle{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;
   margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bd)}
 .dtitle-traceid{font-family:var(--fm);font-size:11px;font-weight:500;
   color:var(--ac);letter-spacing:.2px}
@@ -367,7 +368,15 @@ tbody td{padding:10px 12px;vertical-align:middle;font-size:12px;font-family:var(
 .ctip-row{display:flex;justify-content:space-between;gap:16px}
 .ctip-val{font-family:var(--fm);font-weight:600}
 
-/* ── LIGHT THEME ── */
+.tl-wrap{margin-bottom:18px}.tl-row{display:flex;align-items:center;gap:10px;margin-bottom:5px;min-height:22px}.tl-label{width:120px;flex-shrink:0;font-family:var(--fb);font-size:11px;font-weight:500;color:var(--tx2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tl-track{flex:1;height:20px;background:var(--bg);border-radius:3px;border:1px solid var(--bd);overflow:hidden}.tl-bar{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:7px;font-family:var(--fm);font-size:10px;font-weight:600;white-space:nowrap;min-width:4px}.tl-bar.ok{background:rgba(34,197,94,.3);border-right:2px solid rgba(34,197,94,.7);color:var(--ok)}.tl-bar.wn{background:rgba(245,158,11,.28);border-right:2px solid rgba(245,158,11,.7);color:var(--wn)}.tl-bar.dg{background:rgba(239,68,68,.28);border-right:2px solid rgba(239,68,68,.7);color:var(--dg)}.tl-dur{width:60px;flex-shrink:0;font-family:var(--fm);font-size:10px;font-weight:600;text-align:right;white-space:nowrap}
+.viz-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow)}
+.pct-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.pct-table th{font-family:var(--fb);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);padding:7px 10px;border-bottom:1px solid var(--bd);text-align:right}
+.pct-table th:first-child{text-align:left}
+.pct-table td{font-family:var(--fm);font-size:11px;padding:8px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04)}
+.pct-table td:first-child{font-family:var(--fb);font-size:11px;font-weight:500;color:var(--tx);text-align:left}
+.pct-table tbody tr:hover{background:rgba(79,142,255,.05)}
+
 body.light{
   --bg:#f1f5f9;--sf:#ffffff;--sf2:#f8fafc;--sf3:#f1f5f9;
   --bd:#e2e8f0;--bd2:#cbd5e1;
@@ -380,82 +389,26 @@ body.light{
 body.light::before{background-image:radial-gradient(circle,rgba(37,99,235,.06) 1px,transparent 1px)}
 body.light .din{background:#f8fafc}
 body.light .dz{background:var(--sf2)}
-/* theme toggle button */
 .theme-btn{background:var(--sf2);border:1px solid var(--bd);border-radius:20px;
-  padding:5px 12px;font-family:var(--fb);font-size:11px;font-weight:500;
-  color:var(--tx2);cursor:pointer;transition:all .2s;display:flex;
-  align-items:center;gap:6px}
+  padding:5px 14px;font-size:11px;font-weight:500;color:var(--tx2);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;
+  font-family:var(--fb)}
 .theme-btn:hover{border-color:var(--ac);color:var(--ac)}
-
-/* ── VISUALISATION TABS ── */
-.viz-panel{display:none;margin-bottom:16px}
-.viz-panel.visible{display:block}
-.viz-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
-  padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow)}
-.viz-title{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--tx);
-  margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.viz-subtitle{font-family:var(--fb);font-size:10px;color:var(--tx3);font-weight:400;margin-left:8px}
-
-/* RTT Trend canvas */
-#rtt-canvas{width:100%;height:160px;display:block;cursor:crosshair}
-
-/* Heatmap */
-.heatmap-wrap{overflow-x:auto}
-.heatmap-grid{display:grid;gap:3px}
-.hm-cell{border-radius:2px;cursor:pointer;transition:opacity .1s;min-width:18px;height:18px}
-.hm-cell:hover{opacity:.75}
-.hm-label-row{display:flex;gap:3px;align-items:center}
-.hm-svc-label{font-family:var(--fb);font-size:9px;color:var(--tx3);
-  width:100px;flex-shrink:0;text-align:right;padding-right:8px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-time-label{font-family:var(--fm);font-size:8px;color:var(--tx3);
-  text-align:center;min-width:18px}
-.hm-legend{display:flex;align-items:center;gap:8px;margin-top:10px;
-  font-family:var(--fb);font-size:10px;color:var(--tx3)}
-.hm-leg-bar{height:10px;width:120px;border-radius:3px;
-  background:linear-gradient(90deg,rgba(34,197,94,.15),rgba(245,158,11,.5),rgba(239,68,68,.8))}
-
-/* P95/P99 table */
-.pct-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.pct-table col.pc-svc{width:22%}
-.pct-table col.pc-calls{width:10%}
-.pct-table col.pc-min{width:12%}
-.pct-table col.pc-avg{width:12%}
-.pct-table col.pc-p50{width:11%}
-.pct-table col.pc-p95{width:11%}
-.pct-table col.pc-p99{width:11%}
-.pct-table col.pc-max{width:11%}
-.pct-table th{font-family:var(--fb);font-size:9px;font-weight:600;
-  text-transform:uppercase;letter-spacing:1px;color:var(--tx3);
-  padding:7px 10px;border-bottom:1px solid var(--bd);text-align:right}
-.pct-table th:first-child{text-align:left}
-.pct-table td{font-family:var(--fm);font-size:11px;padding:8px 10px;
-  text-align:right;border-bottom:1px solid rgba(255,255,255,.04)}
-.pct-table td:first-child{font-family:var(--fb);font-size:11px;
-  font-weight:500;color:var(--tx);text-align:left}
-.pct-table tbody tr:hover{background:rgba(79,142,255,.05)}
-.pct-table tbody tr:last-child td{border-bottom:none}
-
-/* Trend tooltip */
-#trend-tip{position:fixed;background:var(--sf3);border:1px solid var(--bd2);
-  border-radius:6px;padding:8px 12px;font-family:var(--fb);font-size:11px;
-  color:var(--tx);pointer-events:none;z-index:9999;display:none;
-  box-shadow:var(--shadow-md);line-height:1.8;min-width:160px}
-
-/* Export button in trace detail */
-.export-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;
-  border-radius:4px;border:1px solid var(--bd2);background:var(--sf3);
-  color:var(--tx2);font-family:var(--fb);font-size:10px;font-weight:500;
-  cursor:pointer;transition:all .15s;text-decoration:none}
-.export-btn:hover{border-color:var(--ac);color:var(--ac)}
-/* Keyboard hint */
 .kb-hint{font-family:var(--fm);font-size:9px;color:var(--tx3);
   display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap}
 .kbd{background:var(--sf2);border:1px solid var(--bd2);border-radius:3px;
   padding:1px 5px;font-size:9px;color:var(--tx2)}
-/* Focus ring for keyboard nav */
 tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
 
+#viz-panel{display:none}
+#viz-panel.visible{display:block}
+
+.export-btn{display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:6px;border:1px solid var(--ac);
+  background:rgba(79,142,255,.1);color:var(--ac);
+  font-family:var(--fb);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;letter-spacing:.2px}
+.export-btn:hover{background:var(--ac);color:#fff}
 </style>
 </head>
 <body>
@@ -475,7 +428,7 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
       <span><span class="kbd">Enter</span> expand</span>
       <span><span class="kbd">Esc</span> close</span>
     </div>
-    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">&#9728; Light</button>
     <div class="hm">
       <div id="hdr-date">—</div>
       <div id="hdr-count" style="color:var(--ac);font-weight:600">No data loaded</div>
@@ -483,31 +436,31 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
   </div>
 </header>
 
-<!-- LOAD -->
+
 <div class="card">
   <div class="ct">Load Log Data</div>
   <div class="lg">
     <div>
-      <div class="ll">Bus Log (oer_bus.log)</div>
+      <div class="ll">Bus Log</div>
       <div class="dz" id="drop-bus" style="padding:32px 16px">
         <input type="file" id="file-bus" accept=".log,.txt"/>
         <div class="dz-icon">📄</div>
-        <div class="dz-label"><strong>Drop bus log here</strong><span>or click to browse · .log / .txt</span></div>
+        <div class="dz-label"><strong>Drop bus log here</strong><span>or click to browse</span></div>
         <div id="bus-badge" style="display:none" class="fbadge">✓ Loaded</div>
       </div>
     </div>
     <div>
-      <div class="ll">Access Log (oer_access.log)</div>
+      <div class="ll">Access Log</div>
       <div class="dz" id="drop-access" style="padding:32px 16px">
         <input type="file" id="file-access" accept=".log,.txt"/>
         <div class="dz-icon">📋</div>
-        <div class="dz-label"><strong>Drop access log here</strong><span>or click to browse · .log / .txt</span></div>
+        <div class="dz-label"><strong>Drop access log here</strong><span>or click to browse</span></div>
         <div id="access-badge" style="display:none" class="fbadge">✓ Loaded</div>
       </div>
     </div>
   </div>
 
-  <!-- SIZE WARNING -->
+  
   <div class="warn-banner" id="size-warn"></div>
 
   <div class="ctrl">
@@ -533,7 +486,7 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
     <button class="tl" onclick="toggleMapping()" id="mtoggle" style="margin-left:3px">⚙ Service Mapping</button>
   </div>
 
-  <!-- PROGRESS -->
+  
   <div id="prog-wrap">
     <div class="prog-title">
       <span id="prog-label">Parsing logs…</span>
@@ -553,7 +506,7 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
     </div>
   </div>
 
-  <!-- MAPPING PANEL -->
+  
   <div class="mp" id="mapping-panel">
     <div class="mp-header">
       <div class="mp-title">Service Name Mapping</div>
@@ -570,39 +523,6 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
 </div>
 
 
-<!-- LOG INSPECTOR -->
-<div class="insp-card" id="insp-card">
-  <button class="insp-toggle" onclick="toggleInspector()">
-    <div class="insp-toggle-left">
-      <span class="insp-badge">BETA</span>
-      <span class="insp-title">Log Format Inspector</span>
-      <span class="insp-sub">— scan a log file to understand its structure</span>
-    </div>
-    <span class="chev" id="insp-chev">›</span>
-  </button>
-  <div class="insp-body" id="insp-body">
-    <p style="font-family:var(--fb);font-size:12px;color:var(--tx3);margin-top:14px;line-height:1.7">
-      Drop any log file below. The inspector reads a sample of lines and reports exactly what patterns it finds —
-      timestamp format, TraceId format, duration format, service name pattern, and more.
-      Share the output with Claude to get a perfectly tuned parser.
-    </p>
-    <div class="insp-dz" id="insp-dz">
-      <input type="file" id="insp-file" accept=".log,.txt,.json"/>
-      <div class="insp-dz-icon">🔍</div>
-      <div class="insp-dz-label">
-        <strong>Drop any log file here to inspect it</strong>
-        bus log · access log · any format · .log / .txt / .json
-      </div>
-    </div>
-    <div class="insp-prog" id="insp-prog">
-      <div class="insp-prog-label" id="insp-prog-label">Reading file…</div>
-      <div class="insp-prog-bar"><div class="insp-prog-fill" id="insp-prog-fill"></div></div>
-    </div>
-    <div class="insp-results" id="insp-results"></div>
-  </div>
-</div>
-
-<!-- KPI -->
 <div class="kpi-row" id="kpi-row" style="display:none">
   <div class="kpi"><div class="kpi-label">Total Requests</div><span class="kv neutral" id="kpi-total">0</span></div>
   <div class="kpi"><div class="kpi-label">Avg Round Trip</div><span class="kv ok" id="kpi-avg">0ms</span></div>
@@ -614,7 +534,7 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
 </div>
 
 
-<!-- PERF PANEL -->
+
 <div id="perf-panel">
   <button class="perf-toggle" id="perf-toggle-btn" onclick="togglePerfPanel()">
     <div class="perf-toggle-left">
@@ -655,59 +575,36 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
 <div id="ctip" class="ctip"></div>
 
 
-<!-- VIZ PANELS -->
-<div id="viz-panel" class="viz-panel">
-
-  <!-- RTT Trend -->
+<div id="viz-panel" style="margin-bottom:16px">
   <div class="viz-card">
-    <div class="viz-title">
-      RTT Trend Over Time
-      <span class="viz-subtitle" id="trend-subtitle"></span>
+    <div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--tx);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      Service Response Time Over Time
+      <span style="font-family:var(--fb);font-size:10px;color:var(--tx3);font-weight:400" id="srt-subtitle"></span>
     </div>
-    <canvas id="rtt-canvas"></canvas>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <label style="font-family:var(--fb);font-size:11px;color:var(--tx3)">Group by</label>
+      <select id="srt-group" onchange="renderSRT()" style="font-size:11px;padding:4px 8px">
+        <option value="minute">Minute</option>
+        <option value="second">Second</option>
+        <option value="5min">5 Minutes</option>
+      </select>
+      <div id="srt-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-left:8px"></div>
+    </div>
+    <canvas id="srt-canvas" style="width:100%;height:220px;display:block;cursor:crosshair"></canvas>
   </div>
 
-  <!-- Heatmap -->
   <div class="viz-card">
-    <div class="viz-title">
-      Service Latency Heatmap
-      <span class="viz-subtitle">each cell = one trace · colour = duration vs threshold</span>
-    </div>
-    <div class="heatmap-wrap" id="heatmap-wrap"></div>
-    <div class="hm-legend">
-      <span>Fast</span>
-      <div class="hm-leg-bar"></div>
-      <span>Slow / Critical</span>
-      <span style="margin-left:12px;color:var(--tx3);font-size:9px">Grey = no call in that trace</span>
-    </div>
-  </div>
-
-  <!-- Percentile Table -->
-  <div class="viz-card">
-    <div class="viz-title">Service Latency Percentiles</div>
+    <div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--tx);margin-bottom:14px">Service Latency Percentiles</div>
     <div style="overflow-x:auto">
       <table class="pct-table">
-        <colgroup>
-          <col class="pc-svc"/><col class="pc-calls"/>
-          <col class="pc-min"/><col class="pc-avg"/>
-          <col class="pc-p50"/><col class="pc-p95"/>
-          <col class="pc-p99"/><col class="pc-max"/>
-        </colgroup>
-        <thead>
-          <tr>
-            <th>Service</th><th>Calls</th>
-            <th>Min</th><th>Avg</th>
-            <th>P50</th><th>P95</th><th>P99</th><th>Max</th>
-          </tr>
-        </thead>
+        <colgroup><col style="width:22%"/><col style="width:10%"/><col style="width:12%"/><col style="width:12%"/><col style="width:11%"/><col style="width:11%"/><col style="width:11%"/><col style="width:11%"/></colgroup>
+        <thead><tr><th>Service</th><th>Calls</th><th>Min</th><th>Avg</th><th>P50</th><th>P95</th><th>P99</th><th>Max</th></tr></thead>
         <tbody id="pct-tbody"></tbody>
       </table>
     </div>
   </div>
 </div>
-<div id="trend-tip"></div>
-
-<!-- TABLE -->
+<div id="trend-tip" style="position:fixed;background:var(--sf3);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-family:var(--fb);font-size:11px;color:var(--tx);pointer-events:none;z-index:9999;display:none;box-shadow:var(--shadow-md);line-height:1.8;min-width:160px"></div>
 <div class="card" id="results-card" style="display:none">
   <div class="ct">Trace Summary</div>
   <div class="tfbar">
@@ -719,7 +616,8 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
       <option value="statusClass">Sort: Status</option>
     </select>
     <button class="btn bg bx" onclick="exportCSV()">⬇ Export CSV</button>
-    <button class="btn bg bx" id="viz-toggle-btn" onclick="toggleViz()">📈 Visualisations</button>
+    <button class="btn bp bx" onclick="exportSummaryReport()" title="Export full test run as HTML report">&#128196; Full Report</button>
+    <button class="btn bg bx" id="viz-toggle-btn" onclick="toggleViz()">&#128200; Visualisations</button>
   </div>
   <div class="tw">
     <table>
@@ -759,9 +657,7 @@ tr.kb-focus{outline:2px solid var(--ac);outline-offset:-2px}
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════
-//  CONSTANTS & STATE
-// ══════════════════════════════════════════════════════════
+function esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 const CHUNK      = 4 * 1024 * 1024;   // 4 MB chunks
 const WARN_SIZE  = 200 * 1024 * 1024; // 200 MB → show warning
 const MAX_SIZE   = 2 * 1024 * 1024 * 1024; // 2 GB hard limit
@@ -772,9 +668,6 @@ let allTraces = [], sortKey = 'rtt', sortDir = -1;
 let serviceMap = {}, detectedServices = new Set();
 let cancelled = false;
 
-// ══════════════════════════════════════════════════════════
-//  FILE DROP / UPLOAD
-// ══════════════════════════════════════════════════════════
 function setupDrop(dropId, inputId, badgeId, target){
   const drop  = document.getElementById(dropId);
   const inp   = document.getElementById(inputId);
@@ -813,10 +706,6 @@ function showSizeWarn(name, size){
   w.textContent = `⚠ Large file detected: ${name} (${fmtSize(size)}). Streaming mode will be used — parsing may take a moment.`;
 }
 
-// ══════════════════════════════════════════════════════════
-//  CHUNKED FILE READER — yields text line-by-line via callback
-//  progressCb(pct 0-100), lineCb(line), doneCb()
-// ══════════════════════════════════════════════════════════
 async function streamFile(file, lineCb, progressCb){
   const total   = file.size;
   let   offset  = 0;
@@ -836,7 +725,6 @@ async function streamFile(file, lineCb, progressCb){
     offset += CHUNK;
     progressCb(Math.min(100, Math.round((offset / total) * 100)));
 
-    // Yield to browser every chunk so UI stays responsive
     await yieldToBrowser();
   }
   if(leftover) lineCb(leftover);
@@ -855,27 +743,20 @@ function yieldToBrowser(){
   return new Promise(res => setTimeout(res, 0));
 }
 
-// ══════════════════════════════════════════════════════════
-//  HELPERS
-// ══════════════════════════════════════════════════════════
 function toMs(t){
   if(!t) return 0;
   try{ return new Date(t.replace(',','.').replace(' ','T')).getTime() || 0; }catch{ return 0; }
 }
 
 function parseDur(line){
-  // "received in : 152 [ms]"  "received in 69 ms"  "received in: 558[ms]"
-  const recv = line.match(/received in\s*:?\s*(\d+(?:\.\d+)?)\s*\[?ms\]?/i);
+  const recv = line.match(/received in\s*:?\s*(\d+(?:\.\d+)?)/i);
   if(recv) return Math.round(parseFloat(recv[1]));
-  // "time=6055"  (access log authoritative RTT)
-  const tkv = line.match(/\btime=(\d+(?:\.\d+)?)\b/i);
-  if(tkv) return Math.round(parseFloat(tkv[1]));
-  // "duration=1200ms"  "duration=1200"
-  const dkv = line.match(/duration=(\d+(?:\.\d+)?)\s*\[?ms?\]?/i);
-  if(dkv) return Math.round(parseFloat(dkv[1]));
-  // bare number[ms]
-  const bare = line.match(/(\d+(?:\.\d+)?)\s*\[ms\]/i);
-  if(bare) return Math.round(parseFloat(bare[1]));
+  const timeKv = line.match(/(?:^|[^a-zA-Z])time=(\d+(?:\.\d+)?)/);
+  if(timeKv) return Math.round(parseFloat(timeKv[1]));
+  const durKv = line.match(/duration=(\d+(?:\.\d+)?)\s*\[?ms?\]?/i);
+  if(durKv) return Math.round(parseFloat(durKv[1]));
+  const bracket = line.match(/(\d+(?:\.\d+)?)\s*\[ms\]/i);
+  if(bracket) return Math.round(parseFloat(bracket[1]));
   return null;
 }
 
@@ -889,40 +770,56 @@ function parseDur(line){
  *     → if that segment is a CamelCase Impl/Wrapper/Service class, use its prefix word
  *     → otherwise use the segment as-is (adcData, kacdata → keep)
  */
-function extractSvcName(entry){
-  // Pattern 1 & 2: dash-label before "received in"
-  const dashRecv = entry.match(/[–\-]\s+([A-Z][A-Za-z0-9]+)\s+(?:[\w]+\s+)*received in/i);
-  if(dashRecv) return dashRecv[1].trim();
+const GLUE_WORDS = new Set([
+  'read','write','response','request','message','event','call',
+  'process','data','update','result','reply','send','get','post',
+  'service','validation','error','status','info','log','glue',
+  'account','balance','order','trade','risk','liquidity','reserve',
+  'estimated','expense','ccpe','decision','position','query'
+]);
 
-  // Pattern 3: grab the class path that follows ">" header close
-  // Format: "> ordering.module.path.ClassName – optional label  message"
-  const afterHeader = entry.match(/>\s+([\w]+(?:\.[\w]+)+)/);
-  if(afterHeader){
-    const path   = afterHeader[1];
-    const parts  = path.split('.');
-    const last   = parts[parts.length - 1];
-    // If last segment is a verbose Impl/Wrapper class, try one level up
-    if(/Impl|Wrapper|Connection|Manager|Factory$/i.test(last) && parts.length >= 2){
-      // Also check for dash label in full entry
-      const dashAny = entry.match(/[–\-]\s+([A-Za-z][A-Za-z0-9]+)\s/);
-      if(dashAny) return dashAny[1].trim();
-      return parts[parts.length - 2];  // e.g. "connection" → use parent "DOmessaging"
-    }
-    return last;  // e.g. "adcData", "RiskCheckService", "OrderPersistenceService"
+function extractSvcName(entry){
+  let classpathName = null;
+  const afterHdr = entry.match(/>\s+(\w[\w.]*\.\w+)/);
+  if(afterHdr){
+    const parts = afterHdr[1].split('.');
+    let last = parts[parts.length - 1];
+    last = last
+      .replace(/ServiceImpl$/i,       '')
+      .replace(/Impl$/i,              '')
+      .replace(/ConnectionWrapper$/i, '')
+      .replace(/Worker$/i,            '')
+      .replace(/Manager$/i,           '')
+      .replace(/Factory$/i,           '')
+      .replace(/Handler$/i,           '')
+      .replace(/Service$/i,           '');
+    if(!last && parts.length >= 2) last = parts[parts.length - 2];
+    classpathName = last || parts[parts.length - 1];
   }
 
-  // Fallback: word before "received in"
-  const bfRecv = entry.match(/(\w+)\s+(?:\w+\s+)*received in/i);
-  return bfRecv ? bfRecv[1] : 'Unknown';
-}
+  const dashRecv = entry.match(/[–—-]\s+([A-Za-z][A-Za-z0-9]+)(?:\s+[\w]+)*?\s+received in/i);
+  if(dashRecv){
+    const candidate = dashRecv[1].trim();
+    const isShortAbbrev = candidate === candidate.toUpperCase() && candidate.length <= 8;
+    const isGlue = GLUE_WORDS.has(candidate.toLowerCase());
+    if(isShortAbbrev && !isGlue) return candidate;
+  }
 
+  const dashLabel = entry.match(/\.\w+\s+[–—-]\s+([A-Za-z][A-Za-z0-9]{1,8})(?:\s|$)/);
+  if(dashLabel){
+    const candidate = dashLabel[1].trim();
+    const isShortAbbrev = candidate === candidate.toUpperCase() && candidate.length <= 8;
+    if(isShortAbbrev && !GLUE_WORDS.has(candidate.toLowerCase())) return candidate;
+  }
+
+  if(classpathName) return classpathName;
+
+  const bfRecv = entry.match(/(\w+)\s+received in/i);
+  if(bfRecv && !GLUE_WORDS.has(bfRecv[1].toLowerCase())) return bfRecv[1];
+  return 'Unknown';
+}
 function displayName(raw){ return serviceMap[raw] || raw; }
 
-// ══════════════════════════════════════════════════════════
-//  LINE ACCUMULATOR
-//  Bus log entries can span multiple lines; we accumulate
-//  continuation lines (no leading timestamp) into the current entry.
-// ══════════════════════════════════════════════════════════
 class LineAccumulator {
   constructor(flushCb){
     this.buf    = null;
@@ -942,70 +839,96 @@ class LineAccumulator {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-//  BUS LOG — entry parser (single assembled entry string)
-// ══════════════════════════════════════════════════════════
 function parseBusEntry(entry){
-  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]?\d*)/);
+  if(entry.indexOf('received in') === -1) return null;
+
+  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d+)/);
   if(!tsM) return null;
 
-  const trM  = entry.match(/TraceId[=:]\s*([a-f0-9A-F\-]{10,})/i);
+  const trM = entry.match(/TraceId=([a-f0-9A-F]{8}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{12})/i)
+           || entry.match(/TraceId=([a-f0-9A-F\-]{10,})/i);
+
   const reqM = entry.match(/Request=(\w+)/);
-  const dur  = parseDur(entry);
+
+  const dur = parseDur(entry);
 
   const rawSvc = extractSvcName(entry);
   detectedServices.add(rawSvc);
 
-  const errM    = entry.match(/error[=:]\s*([^\s,\]>]+)/i);
-  const errVal  = errM ? errM[1] : null;
-  const hasErr  = errVal && !['none','null','-','false'].includes(errVal.toLowerCase());
+  const hasErr = entry.indexOf(' ERROR ') !== -1;
 
   return{
-    time: tsM[1], traceId: trM ? trM[1] : null,
+    time: tsM[1],
+    traceId: trM ? trM[1] : null,
     requestName: reqM ? reqM[1] : null,
-    rawService: rawSvc, service: displayName(rawSvc),
-    dur, status: hasErr ? 'ERROR' : 'SUCCESS',
-    error: hasErr ? errVal : null,
+    rawService: rawSvc,
+    service: displayName(rawSvc),
+    dur,
+    status: hasErr ? 'ERROR' : 'SUCCESS',
+    error: hasErr ? 'ERROR level' : null,
     source: 'bus'
   };
 }
 
-// ══════════════════════════════════════════════════════════
-//  ACCESS LOG — entry parser
-// ══════════════════════════════════════════════════════════
+function extractBlockField(b, key){
+  const prefix = key + '=';
+  const s = b.indexOf(prefix);
+  if(s === -1) return null;
+  const rest = b.slice(s + prefix.length);
+  const next = rest.search(/,[a-zA-Z]+=/);
+  return (next === -1 ? rest : rest.slice(0, next)).trim();
+}
+
 function parseAccessEntry(entry){
-  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]?\d*)/);
+  const tsM = entry.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[,.]\d+)/);
   if(!tsM) return null;
 
-  const trM  = entry.match(/TraceId[=:]\s*([a-f0-9A-F\-]{10,})/i);
-  // request=OrderEntryRequest  → this is the main request name & RTT carrier
-  const reqM = entry.match(/request=(\w+)/i);
-  const dur  = parseDur(entry);   // time= field
+  const trM = entry.match(/TraceId=([a-f0-9A-F]{8}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{4}-[a-f0-9A-F]{12})/i)
+           || entry.match(/TraceId=([a-f0-9A-F\-]{10,})/i);
 
-  const errM   = entry.match(/error[=:]\s*([^\s,\]>]+)/i);
-  const httpM  = entry.match(/\b([45]\d\d)\b/);
-  const errVal = errM ? errM[1] : null;
-  const hasErr = (httpM !== null) ||
-                 (errVal && !['none','null','-','false'].includes((errVal||'').toLowerCase()));
-
+  const reqM = entry.match(/Request=(\w+)/);
   const requestName = reqM ? reqM[1] : 'AccessRequest';
-  detectedServices.add(requestName);
+
+  const timeM = entry.match(/(?:^|[^a-zA-Z])time=(\d+(?:\.\d+)?)/);
+  const dur   = timeM ? Math.round(parseFloat(timeM[1])) : null;
+
+  const rawSvc = extractSvcName(entry) || requestName;
+  detectedServices.add(rawSvc);
+
+  let hasErr = false;
+  let errMsg = null;
+  const statusIdx = entry.indexOf('Status<<');
+
+  if(statusIdx !== -1){
+    const closeIdx = entry.indexOf('>>', statusIdx);
+    const block    = closeIdx > statusIdx ? entry.slice(statusIdx + 8, closeIdx) : '';
+    const codeVal  = extractBlockField(block, 'code');
+    const msgVal   = extractBlockField(block, 'message');
+    const typeVal  = extractBlockField(block, 'type');
+    hasErr = typeVal ? /error/i.test(typeVal) : (codeVal ? codeVal !== '0' : false);
+    if(hasErr){
+      const prefix = codeVal ? '[' + codeVal + '] ' : '';
+      const msg    = msgVal && msgVal.length > 1 ? msgVal : 'ERROR';
+      errMsg = prefix + (msg.length > 150 ? msg.slice(0, 150) + '\u2026' : msg);
+    }
+  } else {
+    hasErr = entry.indexOf(' ERROR ') !== -1 || entry.indexOf('>ERROR<') !== -1;
+    if(hasErr) errMsg = 'ERROR';
+  }
 
   return{
-    time: tsM[1], traceId: trM ? trM[1] : null,
+    time: tsM[1],
+    traceId: trM ? trM[1] : null,
     requestName,
-    rawService: requestName, service: displayName(requestName),
-    dur, status: hasErr ? 'ERROR' : 'SUCCESS',
-    error: hasErr ? (errVal || (httpM ? 'HTTP_'+httpM[1] : null)) : null,
+    rawService: rawSvc,
+    service: displayName(rawSvc),
+    dur,
+    status: hasErr ? 'ERROR' : 'SUCCESS',
+    error: errMsg,
     source: 'access'
   };
 }
 
-// ══════════════════════════════════════════════════════════
-//  PARALLEL STREAM PARSE — bus + access at same time
-//  busFileObj / accessFileObj : File | null
-//  busPasteText / accessPasteText : string (from textarea)
-// ══════════════════════════════════════════════════════════
 async function parseParallel(busFileObj, accessFileObj, busPasteText, accessPasteText){
   let busEntries = [], accessEntries = [];
   cancelled = false;
@@ -1039,7 +962,6 @@ async function parseParallel(busFileObj, accessFileObj, busPasteText, accessPast
   const busAccum    = new LineAccumulator(e => { const p=parseBusEntry(e);    if(p) busEntries.push(p); });
   const accessAccum = new LineAccumulator(e => { const p=parseAccessEntry(e); if(p) accessEntries.push(p); });
 
-  // File takes priority over paste text
   const busTask    = busFileObj
     ? parseFileStream(busFileObj,    busAccum,    'pb-bus',    'pct-bus')
     : parseString(busPasteText,      busAccum,    'pb-bus',    'pct-bus');
@@ -1060,9 +982,6 @@ function setProgress(barId, pctId, pct){
   if(lbl) lbl.textContent = pct + '%';
 }
 
-// ══════════════════════════════════════════════════════════
-//  BUILD TRACES
-// ══════════════════════════════════════════════════════════
 function buildTraces(busEntries, accessEntries){
   const accessByTrace = {};
   for(const e of accessEntries){
@@ -1078,22 +997,25 @@ function buildTraces(busEntries, accessEntries){
   }
   const W = parseInt(document.getElementById('thresh-warn').value) || 500;
   const C = parseInt(document.getElementById('thresh-crit').value) || 2000;
-  const allKeys = new Set([...Object.keys(busMap), ...Object.keys(accessByTrace)]);
+  const allKeys = new Set(
+    Object.keys(busMap).filter(k => accessByTrace[k] && accessByTrace[k].length > 0)
+  ); // Only traces present in BOTH bus + access log
 
   return [...allKeys].map(k => {
     const busCalls = (busMap[k]||[]).sort((a,b) => toMs(a.time)-toMs(b.time));
     const accCalls = (accessByTrace[k]||[]);
 
-    // RTT: access log "time=" is authoritative (end-to-end wall clock)
     let rtt = 0, requestName = '—';
     if(accCalls.length){
       const best = accCalls.reduce((a,b)=>((b.dur||0)>(a.dur||0)?b:a), accCalls[0]);
       rtt         = best.dur || 0;
-      requestName = best.requestName || '—';
+      requestName = best.requestName || best.service || '—';
     } else if(busCalls.length){
       const times = busCalls.map(c=>toMs(c.time)).filter(Boolean);
-      const last  = busCalls[busCalls.length-1];
-      rtt = (toMs(last.time) - Math.min(...times)) + (last.dur||0);
+      if(times.length){
+        const last = busCalls[busCalls.length-1];
+        rtt = (toMs(last.time) - Math.min(...times)) + (last.dur||0);
+      }
       requestName = busCalls[0]?.requestName || '—';
     }
 
@@ -1105,19 +1027,21 @@ function buildTraces(busEntries, accessEntries){
     else if(rtt>=C) sc = 'danger';
     else if(rtt>=W) sc = 'warn';
 
+    const topCall = rtt > 0 && busCalls.length
+      ? busCalls.reduce((best,c)=>(c.dur||0)>(best.dur||0)?c:best, busCalls[0])
+      : null;
+    const outlierPct = (topCall && rtt > 0) ? Math.round((topCall.dur / rtt) * 100) : 0;
     return{
       traceId: k, requestName,
       busCalls, accCalls,
       startTime: busCalls[0]?.time || accCalls[0]?.time || '—',
       rtt, services: busCalls.length,
-      statusClass: sc, hasError: hasErr, errors
+      statusClass: sc, hasError: hasErr, errors,
+      outlier: outlierPct >= 50 ? {service: topCall.service, dur: topCall.dur, pct: outlierPct} : null
     };
   });
 }
 
-// ══════════════════════════════════════════════════════════
-//  ANALYSE (async, with progress + cancel)
-// ══════════════════════════════════════════════════════════
 async function startAnalyse(){
   const hasBusFile    = !!busFile;
   const hasAccessFile = !!accessFile;
@@ -1126,7 +1050,6 @@ async function startAnalyse(){
   }
   const bT = '', aT = '';
 
-  // Show progress, hide analyse button
   document.getElementById('prog-wrap').style.display  = 'block';
   document.getElementById('btn-analyse').style.display = 'none';
   document.getElementById('btn-cancel').style.display  = 'inline-block';
@@ -1138,7 +1061,6 @@ async function startAnalyse(){
 
   const t0 = Date.now();
   try{
-    // Pass file objects (or null) + paste text — parseParallel chooses file over paste
     const { busEntries, accessEntries } = await parseParallel(
       busFile    || null,
       accessFile || null,
@@ -1184,9 +1106,6 @@ function resetProgress(){
   document.getElementById('btn-cancel').style.display  = 'none';
 }
 
-// ══════════════════════════════════════════════════════════
-//  KPIs
-// ══════════════════════════════════════════════════════════
 function renderKPIs(){
   const W = parseInt(document.getElementById('thresh-warn').value)||500;
   const C = parseInt(document.getElementById('thresh-crit').value)||2000;
@@ -1200,7 +1119,6 @@ function renderKPIs(){
   document.getElementById('kpi-warn').textContent  = allTraces.filter(t=>!t.hasError&&t.rtt>=W&&t.rtt<C).length;
   document.getElementById('kpi-crit').textContent  = allTraces.filter(t=>!t.hasError&&t.rtt>=C).length;
   document.getElementById('kpi-err').textContent   = allTraces.filter(t=>t.hasError).length;
-  // Show/update perf panel
   const hasData = allTraces.length > 0;
   document.getElementById('perf-panel').classList.toggle('visible', hasData);
   if(hasData){
@@ -1211,9 +1129,6 @@ function renderKPIs(){
   if(perfOpen) renderChart();
 }
 
-// ══════════════════════════════════════════════════════════
-//  TABLE
-// ══════════════════════════════════════════════════════════
 function getFiltered(){
   const q = document.getElementById('search-box').value.toLowerCase();
   const s = document.getElementById('filter-status').value;
@@ -1257,7 +1172,8 @@ function renderTable(){
       <td style="color:var(--tx3)">${trace.services}</td>
       <td><span class="badge ${trace.statusClass==='ok'?'bok':trace.statusClass==='warn'?'bwn':'bdg'}">${trace.hasError?'ERROR':trace.statusClass.toUpperCase()}</span></td>
       <td style="color:var(--dg);font-size:9px">${trace.errors.slice(0,2).join(', ')||'—'}</td>`;
-    tr.addEventListener('click', ()=>toggleDetail(trace, tr, safe));
+    tr.querySelector('td:first-child').style.cursor = 'pointer';
+    tr.querySelector('td:first-child').addEventListener('click', ()=>toggleDetail(trace, tr, safe));
     tbody.appendChild(tr);
     const dr = document.createElement('tr');
     dr.classList.add('drow'); dr.id='det-'+safe; dr.style.display='none';
@@ -1284,20 +1200,22 @@ function buildDetail(trace){
   const C = parseInt(document.getElementById('thresh-crit').value)||2000;
   const rttCls = trace.rtt>=C?'ddg':trace.rtt>=W?'dwn':'dok';
 
-  // ── Header ──────────────────────────────────────────────
   const header = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="export-btn" onclick="exportTrace(event,'${trace.traceId}')">⬇ Export Report</button>
-    </div>
     <div class="dtitle">
       <span class="dtitle-traceid">${trace.traceId}</span>
       <span class="dtitle-sep">·</span>
       <span class="dtitle-rtt-label">Round Trip</span>
       <span class="dtitle-rtt-val ${rttCls}">${trace.rtt>0?trace.rtt+' ms':'—'}</span>
       <span class="dtitle-calls">${trace.services} bus call${trace.services!==1?'s':''}</span>
+      <button class="export-btn" onclick="exportTrace(event,'${trace.traceId}')" title="Export full trace report as HTML">&#8659; Export Report</button>
     </div>`;
+  if(trace.outlier){
+    header += '<div style="margin:0 0 10px"><span style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:var(--wn);font-family:var(--fb);font-size:10px;font-weight:600;padding:4px 12px;border-radius:4px;display:inline-flex;align-items:center;gap:6px">&#9888; Bottleneck: '
+      + esc(trace.outlier.service) + ' — ' + trace.outlier.dur + ' ms (' + trace.outlier.pct + '% of total RTT)'
+      + '</span></div>';
+  }
 
-  // ── Access summary card ──────────────────────────────────
+
   let accessBar = '';
   if(trace.accCalls.length){
     const best   = trace.accCalls.reduce((a,b)=>((b.dur||0)>(a.dur||0)?b:a), trace.accCalls[0]);
@@ -1324,48 +1242,47 @@ function buildDetail(trace){
       </div>`;
   }
 
-  // ── Gantt timeline ───────────────────────────────────────
-  let ganttHTML = `<div style="color:var(--tx3);font-family:var(--fb);font-size:12px;
+  let ganttHTML = `<div style="color:var(--tx3);font-family:var(--fb);font-size:11px;
     padding:12px 0;text-align:center">No bus log calls for this trace.</div>`;
 
   if(trace.busCalls.length){
+    const maxDur = Math.max(...trace.busCalls.map(c=>c.dur||0), 1);
     const times  = trace.busCalls.map(c=>toMs(c.time)).filter(v=>v>0);
     const minT   = Math.min(...times);
-    const maxEnd = Math.max(...trace.busCalls.map(c=>toMs(c.time)+(c.dur||0)));
-    const total  = maxEnd - minT || 1;
+    const spanMs = Math.max(toMs(trace.busCalls[trace.busCalls.length-1].time) - minT, 1);
 
-    ganttHTML = trace.busCalls.map(c=>{
-      const s    = toMs(c.time) - minT;
-      const d    = c.dur || 0;
-      const left = (s / total) * 100;
-      const w    = (d / total) * 100;
-      const cls  = c.status==='ERROR'?'dg':d>=C?'dg':d>=W?'wn':'ok';
-      const dc2  = cls==='ok'?'dok':cls==='wn'?'dwn':'ddg';
-      // If bar is too narrow to show text inside, show label outside
-      const showInside = w > 8;
-      const barInner   = showInside ? `${d} ms` : '';
-      const outerLabel = !showInside && d > 0
-        ? `<span class="gbar-outlabel ${dc2}">${d} ms</span>` : '';
-      return `<div class="grow">
-        <div class="glabel" title="${c.rawService||c.service}">${c.service}</div>
-        <div class="gtrack" style="position:relative">
-          <div class="gbar ${cls}"
-            style="left:${left.toFixed(2)}%;width:${Math.max(w,0.8).toFixed(2)}%">
-            ${barInner}
+    const rows = trace.busCalls.map(c=>{
+      const d      = c.dur || 0;
+      const offPct = Math.min(((toMs(c.time) - minT) / spanMs) * 80, 78);
+      const widPct = Math.max((d / maxDur) * (100 - offPct), d > 0 ? 1.5 : 0);
+      const cls    = c.status==='ERROR'?'dg':d>=C?'dg':d>=W?'wn':'ok';
+      const dc2    = cls==='ok'?'dok':cls==='wn'?'dwn':'ddg';
+      const durTxt = d > 0 ? d+' ms' : '—';
+      const barLabel = widPct > 18 ? durTxt : '';
+      return `<div class="tl-row">
+        <div class="tl-label" title="${c.rawService||c.service}" style="${isBottleneck?'color:var(--wn);font-weight:600':''}">${isBottleneck?'&#9888; ':''} ${esc(c.service)}</div>
+        <div class="tl-track">
+          <div class="tl-bar ${cls}"
+            style="margin-left:${offPct.toFixed(1)}%;width:${widPct.toFixed(1)}%">
+            ${barLabel}
           </div>
-          ${outerLabel}
         </div>
-        <div class="gdur ${dc2}">${d>0?d+' ms':'—'}</div>
+        <div class="tl-dur ${dc2}">${durTxt}</div>
       </div>`;
     }).join('');
+
+    ganttHTML = `<div class="tl-wrap">${rows}</div>`;
   }
 
-  // ── Service table ────────────────────────────────────────
-  const busRows = trace.busCalls.map(c=>{
+  const allRows = [...trace.busCalls, ...trace.accCalls];
+  const busRows = allRows.map(c=>{
     const dc2   = c.status==='ERROR'?'ddg':(c.dur||0)>=C?'ddg':(c.dur||0)>=W?'dwn':'dok';
     const stCls = c.status==='ERROR'?'bdg':'bok';
+    const srcBadge = c.source==='access'
+      ? `<span style="font-size:9px;background:rgba(124,92,252,.15);color:var(--ac2);border:1px solid rgba(124,92,252,.3);border-radius:3px;padding:1px 5px;margin-right:4px">ACC</span>`
+      : '';
     return `<tr>
-      <td class="svc-name" title="${c.rawService||c.service}">${c.service}</td>
+      <td class="svc-name" title="${c.rawService||c.service}">${srcBadge}${c.service}</td>
       <td class="svc-ts">${c.time}</td>
       <td class="svc-dur ${dc2}">${c.dur!=null&&c.dur>0?c.dur+' ms':'—'}</td>
       <td class="svc-status"><span class="badge ${stCls}">${c.status}</span></td>
@@ -1400,9 +1317,6 @@ function buildDetail(trace){
   </div>`;
 }
 
-// ══════════════════════════════════════════════════════════
-//  MAPPING
-// ══════════════════════════════════════════════════════════
 function toggleMapping(){
   const p=document.getElementById('mapping-panel');
   p.classList.toggle('open');
@@ -1436,9 +1350,6 @@ function applyMapping(){
   toast('Mapping applied — click Analyse to refresh.','ok');
 }
 
-// ══════════════════════════════════════════════════════════
-//  SORT / FILTER / EXPORT / CLEAR
-// ══════════════════════════════════════════════════════════
 function filterTable(){renderTable()}
 function sortTable(){sortKey=document.getElementById('sort-col').value;renderTable()}
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}renderTable()}
@@ -1463,40 +1374,29 @@ function clearAll(){
   allTraces=[]; detectedServices.clear(); toast('Cleared.','ok');
 }
 
-// ══════════════════════════════════════════════════════════
-//  DEMO DATA — exact real log format
-// ══════════════════════════════════════════════════════════
 function loadDemo(){
   const busDemoText =
-`2026-02-14 08:10:18,274 147444126 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 69 ms
-2026-02-14 08:10:18,437 147444289 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.order.com.ab.dffmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 152 [ms]
-2026-02-14 08:10:19,100 147444400 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK SubEntityId= Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.adcData.AdcDetailsImpl – ADC Read Request received in 88 ms
-2026-02-14 08:10:19,300 147444550 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.validation.RiskCheckService – RISK Validation received in 245 ms
-2026-02-14 08:10:19,600 147444700 [ExecuteThread: abcdef_server_ext1-156] INFO <Request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 ConsumerIP=localhost EntityId=ABK Application=50 Version=366 BoId=905039882600 UserId=AB1237> ordering.persist.OrderPersistenceService – OPS Write received in 310 ms
-2026-02-14 08:10:20,050 147445100 [ExecuteThread: abcdef_server_ext2-042] INFO <Request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.report.com.db.cosmos.core.bol.orderservices.basefunctions.information.kacdata.KacDetailsImpl – KAC Read Request received in 120 ms
-2026-02-14 08:10:20,500 147445200 [ExecuteThread: abcdef_server_ext2-042] INFO <Request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 ConsumerIP=localhost EntityId=DEF Application=50 Version=366 BoId=111122223333 UserId=XY9900> ordering.order.com.ab.dffmos.core.bol.orderservices.backend.connection.DOMessagingConnectionWrapper – DO Response received in : 3200 [ms]`;
+`2025-01-15 10:00:01,120 110001 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1 Version=1> com.example.services.validation.RiskServiceImpl – RISK Validation received in 85 ms
+2025-01-15 10:00:01,250 110002 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1 Version=1> com.example.services.pricing.PricingServiceImpl – PRICE Read Request received in 120 ms
+2025-01-15 10:00:01,430 110003 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1 Version=1> com.example.services.account.AccountServiceImpl – ACC Read Request received in 95 ms
+2025-01-15 10:00:01,600 110004 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1 Version=1> com.example.services.execution.ExecutionServiceImpl – EXEC Write received in : 210 [ms]
+2025-01-15 10:00:01,850 110005 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1 Version=1> com.example.services.notification.NotifyServiceImpl – NOTIFY Response received in 55 ms
+2025-01-15 10:00:02,200 110006 [ExecuteThread: srv-02] INFO <Request=TradeEntryRequest TraceId=bbbbbbbb-0002-0002-0002-000000000002 AppId=1 Version=1> com.example.services.validation.RiskServiceImpl – RISK Validation received in 3200 ms
+2025-01-15 10:00:02,400 110007 [ExecuteThread: srv-02] INFO <Request=TradeEntryRequest TraceId=bbbbbbbb-0002-0002-0002-000000000002 AppId=1 Version=1> com.example.services.pricing.PricingServiceImpl – PRICE Read Request received in 180 ms`;
   const accessDemoText =
-`2026-02-14 08:10:20,600 [AccessLog] request=OrderEntryRequest TraceId=6a4e983e-609d-4e26-9632-04143e8396db ConsumerId=83135-1 EntityId=ABK UserId=AB1237 status=SUCCESS time=6055
-2026-02-14 08:10:24,100 [AccessLog] request=OrderEntryRequest TraceId=fa91cc20-1234-4abc-beef-000000000002 ConsumerId=99001-2 EntityId=DEF UserId=XY9900 status=SUCCESS time=4200`;
+`2025-01-15 10:00:02,600 120001 [ExecuteThread: srv-01] INFO <Request=TradeEntryRequest TraceId=aaaaaaaa-0001-0001-0001-000000000001 AppId=1> com.example.worker.TradeWorker time=685
+2025-01-15 10:00:06,100 120002 [ExecuteThread: srv-02] INFO <Request=TradeEntryRequest TraceId=bbbbbbbb-0002-0002-0002-000000000002 AppId=1> com.example.worker.TradeWorker OrderEntryRequestprocessed with status : Status<<code=5001,message=Risk limit exceeded for the requested position size,type=error>> time=4200`;
 
-  busFile   = new File([busDemoText],   'demo_bus.log',    {type:'text/plain'});
-  accessFile= new File([accessDemoText],'demo_access.log', {type:'text/plain'});
+  busFile   = new File([busDemoText],   'demo_bus.log',   {type:'text/plain'});
+  accessFile= new File([accessDemoText],'demo_access.log',{type:'text/plain'});
   busText=''; accessText='';
-
   document.getElementById('bus-badge').style.display='inline-block';
-  document.getElementById('bus-badge').textContent='✓ demo_bus.log (demo)';
+  document.getElementById('bus-badge').textContent='✓ Bus log (demo)';
   document.getElementById('access-badge').style.display='inline-block';
-  document.getElementById('access-badge').textContent='✓ demo_access.log (demo)';
+  document.getElementById('access-badge').textContent='✓ Access log (demo)';
   toast('Demo loaded — click Analyse.','ok');
 }
 
-// ══════════════════════════════════════════════════════════
-//  TOAST
-// ══════════════════════════════════════════════════════════
-
-// ════════════════════════════════════════════════════════
-//  SERVICE PERFORMANCE CHART
-// ════════════════════════════════════════════════════════
 let chartMetric = 'avg';
 let perfOpen    = false;
 
@@ -1516,7 +1416,6 @@ function setMetric(m, btn){
 }
 
 function buildServiceStats(){
-  // Gather all bus calls across all traces
   const map = {}; // serviceName → {durs:[], errors:0, calls:0}
   for(const trace of allTraces){
     for(const c of trace.busCalls){
@@ -1558,7 +1457,6 @@ function renderChart(){
     return;
   }
 
-  // Sort
   stats.sort((a,b)=>{
     if(sort==='avg')   return b.avg  - a.avg;
     if(sort==='max')   return b.max  - a.max;
@@ -1566,10 +1464,8 @@ function renderChart(){
     return a.name.localeCompare(b.name);
   });
 
-  // Scale: max value determines 100% bar width
   const refVal = Math.max(...stats.map(s=>s.max), 1);
 
-  // Axis ticks (5 ticks)
   const axisEl = document.getElementById('chart-axis');
   axisEl.style.height = '16px';
   const axisWidth = document.getElementById('chart-grid').clientWidth - 172 - 112;
@@ -1579,7 +1475,6 @@ function renderChart(){
     return `<span class="axis-tick" style="left:${Math.round(axisWidth*t)}px">${val>999?(val/1000).toFixed(1)+'s':val+'ms'}</span>`;
   }).join('');
 
-  // Render rows
   const grid = document.getElementById('chart-grid');
   grid.innerHTML = '';
 
@@ -1600,11 +1495,9 @@ function renderChart(){
     const maxPct  = (s.max / refVal) * 100;
     const avgOnly = (s.avg / refVal) * 100;
 
-    // Build the bar(s) based on selected metric
     let barHTML = '';
 
     if(chartMetric === 'all'){
-      // Three layered segments: min (green) | avg extension (blue) | max extension (amber)
       const minW   = minPct;
       const avgExt = Math.max(0, avgPct - minPct);
       const maxExt = Math.max(0, maxPct - avgPct);
@@ -1632,7 +1525,6 @@ function renderChart(){
       </div>`;
     }
 
-    // Threshold marker lines inside bar area (drawn as pseudo-elements via inline style)
     const warnPos  = Math.min((W/refVal)*100, 100);
     const critPos  = Math.min((C/refVal)*100, 100);
     const markers  = `
@@ -1655,14 +1547,13 @@ function renderChart(){
       </div>
       <div class="chart-meta">${callsLbl}${errPill}</div>`;
 
-    // Tooltip
     row.addEventListener('mousemove', e=>{
       const avgColor = s.avg>=C?'var(--dg)':s.avg>=W?'var(--wn)':'var(--ok)';
       const maxColor = s.max>=C?'var(--dg)':s.max>=W?'var(--wn)':'var(--ok)';
       tip.style.display='block';
       tip.style.left=(e.clientX+14)+'px';
       tip.style.top =(e.clientY-10)+'px';
-      tip.innerHTML=`<div class="ctip-title">${s.name}</div>
+      tip.innerHTML=`<div class="ctip-title">${esc(s.name)}</div>
         <div class="ctip-row"><span>Min</span><span class="ctip-val" style="color:var(--ok)">${s.min} ms</span></div>
         <div class="ctip-row"><span>Avg</span><span class="ctip-val" style="color:${avgColor}">${s.avg} ms</span></div>
         <div class="ctip-row"><span>Max</span><span class="ctip-val" style="color:${maxColor}">${s.max} ms</span></div>
@@ -1674,23 +1565,15 @@ function renderChart(){
 
     grid.appendChild(row);
 
-    // Divider after each row
     const div = document.createElement('hr');
     div.className = 'chart-divider';
     grid.appendChild(div);
   });
 
-  // Update subtitle
   document.getElementById('perf-toggle-sub').textContent =
     `— ${stats.length} services · sorted by ${sort}`;
 }
 
-// perf panel updates handled inside renderKPIs above
-
-
-// ════════════════════════════════════════════════════════════════
-//  THEME TOGGLE
-// ════════════════════════════════════════════════════════════════
 let lightMode = false;
 function toggleTheme(){
   lightMode = !lightMode;
@@ -1698,9 +1581,6 @@ function toggleTheme(){
   document.getElementById('theme-btn').textContent = lightMode ? '🌙 Dark' : '☀ Light';
 }
 
-// ════════════════════════════════════════════════════════════════
-//  KEYBOARD NAVIGATION
-// ════════════════════════════════════════════════════════════════
 let kbIndex = -1;
 document.addEventListener('keydown', e => {
   if(!allTraces.length) return;
@@ -1730,9 +1610,6 @@ function highlightKb(rows){
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-//  VISUALISATIONS TOGGLE
-// ════════════════════════════════════════════════════════════════
 let vizOpen = false;
 function toggleViz(){
   vizOpen = !vizOpen;
@@ -1740,188 +1617,171 @@ function toggleViz(){
   document.getElementById('viz-toggle-btn').textContent =
     vizOpen ? '📈 Hide Visualisations' : '📈 Visualisations';
   if(vizOpen){
-    try{ renderTrend(); }catch(e){ console.warn('trend',e); }
-    try{ renderHeatmap(); }catch(e){ console.warn('heatmap',e); }
+    try{ renderSRT(); }catch(e){ console.warn('srt',e); }
     try{ renderPercentiles(); }catch(e){ console.warn('percentiles',e); }
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-//  RTT TREND LINE (canvas-based, no lib)
-// ════════════════════════════════════════════════════════════════
-function renderTrend(){
-  const canvas = document.getElementById('rtt-canvas');
-  const tip    = document.getElementById('trend-tip');
-  const W = parseInt(document.getElementById('thresh-warn').value)||500;
-  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+const SRT_COLORS = [
+  '#4f8eff','#22c55e','#f59e0b','#ef4444','#a78bfa',
+  '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6'
+];
 
-  // Sort traces by start time
-  const pts = allTraces
-    .filter(t => t.rtt > 0 && t.startTime !== '—')
-    .sort((a,b) => toMs(a.startTime) - toMs(b.startTime))
-    .map(t => ({ rtt: t.rtt, time: t.startTime, id: t.traceId, req: t.requestName }));
+function renderSRT(){
+  const canvas = document.getElementById('srt-canvas');
+  const legend = document.getElementById('srt-legend');
+  if(!canvas || !allTraces.length) return;
 
-  if(!pts.length){ canvas.style.display='none'; return; }
-  canvas.style.display = 'block';
+  const W    = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C    = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const grp  = document.getElementById('srt-group').value;
+  const tip  = document.getElementById('trend-tip');
 
-  const dpr   = window.devicePixelRatio || 1;
-  const rect  = canvas.getBoundingClientRect();
+  const svcMap = {};   // svcName → { bucket_key → [durations] }
+
+  for(const trace of allTraces){
+    for(const c of trace.busCalls){
+      if(!c.dur || c.dur <= 0) continue;
+      const svc = c.service || c.rawService || 'Unknown';
+      const ms  = toMs(c.time);
+      if(!ms) continue;
+      const d   = new Date(ms);
+      const hh=String(d.getHours()).padStart(2,'0');
+      const mm=String(d.getMinutes()).padStart(2,'0');
+      const ss=String(d.getSeconds()).padStart(2,'0');
+      const dp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+hh+':';
+      let bkey;
+      if(grp==='second')      bkey=dp+mm+':'+ss;
+      else if(grp==='5min'){  bkey=dp+String(Math.floor(d.getMinutes()/5)*5).padStart(2,'0'); }
+      else                    bkey=dp+mm;
+      if(!svcMap[svc]) svcMap[svc] = {};
+      if(!svcMap[svc][bkey]) svcMap[svc][bkey] = [];
+      svcMap[svc][bkey].push(c.dur);
+    }
+  }
+
+  const svcNames = Object.keys(svcMap).sort();
+  if(!svcNames.length){ canvas.style.display='none'; return; }
+  canvas.style.display='block';
+
+  const allBuckets = [...new Set(
+    Object.values(svcMap).flatMap(m => Object.keys(m))
+  )].sort();
+
+  if(allBuckets.length < 2){ 
+    document.getElementById('srt-subtitle').textContent = '— not enough data points';
+    return;
+  }
+
+  const dpr  = window.devicePixelRatio||1;
+  const rect = canvas.getBoundingClientRect();
+  if(!rect.width) return;
   canvas.width  = rect.width  * dpr;
   canvas.height = rect.height * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  const W2 = rect.width, H2 = rect.height;
-  const PAD = { t:12, r:20, b:28, l:52 };
-  const cW = W2 - PAD.l - PAD.r;
-  const cH = H2 - PAD.t - PAD.b;
+  const W2=rect.width, H2=rect.height;
+  const PAD={t:16, r:20, b:36, l:56};
+  const cW=W2-PAD.l-PAD.r, cH=H2-PAD.t-PAD.b;
 
-  const maxRtt = Math.max(...pts.map(p => p.rtt));
-  const xStep  = pts.length > 1 ? cW / (pts.length - 1) : cW;
-
-  const px = i  => PAD.l + i * xStep;
-  const py = rtt => PAD.t + cH - (rtt / maxRtt) * cH;
-
-  // Grid lines + Y axis labels
-  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bd').trim() || '#252838';
-  ctx.lineWidth = 1;
-  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
-    const y = PAD.t + cH * (1 - f);
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W2 - PAD.r, y);
-    ctx.globalAlpha = .3; ctx.stroke(); ctx.globalAlpha = 1;
-    const val = Math.round(maxRtt * f);
-    ctx.fillStyle = '#64748b';
-    ctx.font = `9px IBM Plex Mono, monospace`;
-    ctx.textAlign = 'right';
-    ctx.fillText(val > 999 ? (val/1000).toFixed(1)+'s' : val+'ms', PAD.l - 4, y + 3);
+  let maxVal = 0;
+  const svcAvgs = {};
+  svcNames.forEach(svc=>{
+    svcAvgs[svc] = allBuckets.map(b=>{
+      const durs = svcMap[svc][b];
+      if(!durs) return null;
+      return Math.round(durs.reduce((a,x)=>a+x,0)/durs.length);
+    });
+    svcAvgs[svc].forEach(v=>{ if(v!=null && v>maxVal) maxVal=v; });
   });
+  maxVal = Math.ceil(maxVal*1.1/100)*100 || 500;
 
-  // Warn / crit threshold lines
-  const drawThresh = (val, col) => {
-    if(val > maxRtt) return;
-    const y = py(val);
-    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
-    ctx.globalAlpha = .55;
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W2 - PAD.r, y); ctx.stroke();
-    ctx.globalAlpha = 1; ctx.setLineDash([]);
+  const xStep = allBuckets.length > 1 ? cW/(allBuckets.length-1) : cW;
+  const toX   = i  => PAD.l + i*xStep;
+  const toY   = v  => PAD.t + cH - (v/maxVal)*cH;
+
+  ctx.clearRect(0,0,W2,H2);
+
+  const yTicks = 5;
+  for(let i=0;i<=yTicks;i++){
+    const v = Math.round(maxVal*(i/yTicks));
+    const y = toY(v);
+    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W2-PAD.r,y); ctx.stroke();
+    ctx.fillStyle='#64748b'; ctx.font=`9px IBM Plex Mono,monospace`; ctx.textAlign='right';
+    ctx.fillText(v>999?(v/1000).toFixed(1)+'s':v+'ms', PAD.l-4, y+3);
+  }
+
+  const drawLine=(val,col)=>{
+    if(val>maxVal) return;
+    ctx.setLineDash([4,3]); ctx.strokeStyle=col; ctx.lineWidth=1; ctx.globalAlpha=.6;
+    ctx.beginPath(); ctx.moveTo(PAD.l,toY(val)); ctx.lineTo(W2-PAD.r,toY(val)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
   };
-  drawThresh(W, '#f59e0b');
-  drawThresh(C, '#ef4444');
+  drawLine(W,'#f59e0b'); drawLine(C,'#ef4444');
 
-  // Line
-  ctx.beginPath();
-  pts.forEach((p,i) => i===0 ? ctx.moveTo(px(i), py(p.rtt)) : ctx.lineTo(px(i), py(p.rtt)));
-  ctx.strokeStyle = '#4f8eff'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-  ctx.stroke();
-
-  // Area fill under line
-  ctx.lineTo(px(pts.length-1), PAD.t+cH);
-  ctx.lineTo(px(0), PAD.t+cH);
-  ctx.closePath();
-  const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t+cH);
-  grad.addColorStop(0, 'rgba(79,142,255,.22)');
-  grad.addColorStop(1, 'rgba(79,142,255,.0)');
-  ctx.fillStyle = grad; ctx.fill();
-
-  // Dots
-  pts.forEach((p,i) => {
-    const col = p.rtt >= C ? '#ef4444' : p.rtt >= W ? '#f59e0b' : '#22c55e';
+  svcNames.forEach((svc,si)=>{
+    const col  = SRT_COLORS[si % SRT_COLORS.length];
+    const avgs = svcAvgs[svc];
+    ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.lineJoin='round';
     ctx.beginPath();
-    ctx.arc(px(i), py(p.rtt), 4, 0, Math.PI*2);
-    ctx.fillStyle = col; ctx.fill();
-    ctx.strokeStyle = '#0b0d14'; ctx.lineWidth = 1.5; ctx.stroke();
-  });
-
-  // Time labels (max 8)
-  const step = Math.max(1, Math.floor(pts.length / 8));
-  ctx.fillStyle = '#64748b'; ctx.font = '9px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
-  pts.forEach((p,i) => {
-    if(i % step === 0){
-      const t = p.time.split(' ')[1]?.replace(',','.').slice(0,8) || '';
-      ctx.fillText(t, px(i), H2 - 6);
+    let started=false;
+    avgs.forEach((v,i)=>{
+      if(v==null){ started=false; return; }
+      if(!started){ ctx.moveTo(toX(i),toY(v)); started=true; }
+      else          ctx.lineTo(toX(i),toY(v));
+    });
+    ctx.stroke();
+    if(grp !== 'second'){
+      avgs.forEach((v,i)=>{
+        if(v==null) return;
+        ctx.beginPath(); ctx.arc(toX(i),toY(v),2.5,0,Math.PI*2);
+        ctx.fillStyle=col; ctx.fill();
+      });
     }
   });
 
-  // Hover tooltip
-  canvas.onmousemove = e => {
-    const bRect = canvas.getBoundingClientRect();
-    const mx = e.clientX - bRect.left - PAD.l;
-    const idx = Math.max(0, Math.min(pts.length-1, Math.round(mx / xStep)));
-    const p   = pts[idx];
-    if(!p) return;
-    const col = p.rtt>=C?'var(--dg)':p.rtt>=W?'var(--wn)':'var(--ok)';
-    tip.style.display = 'block';
-    tip.style.left = (e.clientX+14)+'px';
-    tip.style.top  = (e.clientY-10)+'px';
-    tip.innerHTML  = `<b style="color:var(--ac);font-size:11px">${p.req}</b><br/>
-      <span style="color:var(--tx3);font-size:10px">${p.time}</span><br/>
-      RTT: <b style="color:${col}">${p.rtt} ms</b>`;
+  ctx.fillStyle='#64748b'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
+  const step = Math.max(1, Math.floor(allBuckets.length/10));
+  allBuckets.forEach((b,i)=>{
+    if(i%step!==0) return;
+    const lbl = b.split(' ')[1] || b;
+    ctx.fillText(lbl, toX(i), H2-8);
+  });
+
+  legend.innerHTML = svcNames.map((svc,si)=>`
+    <div style="display:flex;align-items:center;gap:5px;font-family:var(--fb);font-size:10px;color:var(--tx2)">
+      <div style="width:18px;height:2px;background:${SRT_COLORS[si%SRT_COLORS.length]};border-radius:1px"></div>
+      ${esc(svc)}
+    </div>`).join('');
+
+  document.getElementById('srt-subtitle').textContent =
+    '— ' + svcNames.length + ' services · ' + allBuckets.length + ' time buckets';
+
+  canvas.onmousemove = e=>{
+    const br  = canvas.getBoundingClientRect();
+    const mx  = e.clientX - br.left - PAD.l;
+    const idx = Math.max(0, Math.min(allBuckets.length-1, Math.round(mx/xStep)));
+    const bkt = allBuckets[idx];
+    let rows = svcNames.map((svc,si)=>{
+      const v = svcAvgs[svc][idx];
+      if(v==null) return '';
+      const col=SRT_COLORS[si%SRT_COLORS.length];
+      const vc = v>=C?'var(--dg)':v>=W?'var(--wn)':'var(--ok)';
+      return `<div style="display:flex;justify-content:space-between;gap:14px">
+        <span style="color:${col}">${svc}</span>
+        <span style="font-family:var(--fm);font-weight:600;color:${vc}">${v} ms</span>
+      </div>`;
+    }).filter(Boolean).join('');
+    if(!rows) return;
+    tip.style.display='block';
+    tip.style.left=(e.clientX+14)+'px';
+    tip.style.top =(e.clientY-10)+'px';
+    tip.innerHTML=`<div style="font-family:var(--fm);font-size:10px;color:var(--ac);margin-bottom:6px">${bkt.slice(11)}</div>${rows}`;
   };
-  canvas.onmouseleave = () => tip.style.display = 'none';
-
-  document.getElementById('trend-subtitle').textContent =
-    pts.length + ' requests · sorted by time';
+  canvas.onmouseleave=()=>tip.style.display='none';
 }
 
-// ════════════════════════════════════════════════════════════════
-//  SERVICE LATENCY HEATMAP
-// ════════════════════════════════════════════════════════════════
-function renderHeatmap(){
-  const W = parseInt(document.getElementById('thresh-warn').value)||500;
-  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
-  const wrap = document.getElementById('heatmap-wrap');
-
-  // Collect service names and sorted traces
-  const svcNames = [...new Set(allTraces.flatMap(t => t.busCalls.map(c => c.service)))].sort();
-  const traces   = [...allTraces].sort((a,b) => toMs(a.startTime)-toMs(b.startTime));
-  if(!svcNames.length || !traces.length){ wrap.innerHTML='<div style="color:var(--tx3);font-size:11px;padding:12px">No bus call data.</div>'; return; }
-
-  // Limit display to 60 traces and 15 services to keep grid manageable
-  const MAX_T = 60, MAX_S = 15;
-  const dispTraces = traces.slice(0, MAX_T);
-  const dispSvcs   = svcNames.slice(0, MAX_S);
-
-  const cellW = Math.max(18, Math.min(28, Math.floor((wrap.clientWidth - 110) / dispTraces.length)));
-
-  function durColor(d){
-    if(d == null) return 'rgba(255,255,255,.05)';
-    if(d >= C)    return 'rgba(239,68,68,.80)';
-    if(d >= W)    return 'rgba(245,158,11,.65)';
-    const ratio = d / W;
-    return `rgba(34,197,94,${(0.15 + ratio * 0.35).toFixed(2)})`;
-  }
-
-  let html2 = '<div style="display:inline-block;min-width:100%">';
-
-  // Time header row
-  html2 += '<div class="hm-label-row" style="margin-bottom:3px">';
-  html2 += `<div class="hm-svc-label"></div>`;
-  dispTraces.forEach((t,i) => {
-    const lbl = i % Math.max(1,Math.floor(dispTraces.length/8))===0
-      ? (t.startTime||'').split(' ')[1]?.slice(0,5)||'' : '';
-    html2 += `<div class="hm-time-label" style="width:${cellW}px">${lbl}</div>`;
-  });
-  html2 += '</div>';
-
-  // Service rows
-  dispSvcs.forEach(svc => {
-    html2 += '<div class="hm-label-row" style="margin-bottom:3px">';
-    html2 += `<div class="hm-svc-label" title="${svc}">${svc}</div>`;
-    dispTraces.forEach(t => {
-      const call = t.busCalls.find(c => c.service === svc);
-      const d    = call ? call.dur : null;
-      const tip2 = call ? `${svc}: ${d} ms` : `${svc}: no call`;
-      html2 += `<div class="hm-cell" style="width:${cellW}px;background:${durColor(d)}" title="${tip2}"></div>`;
-    });
-    html2 += '</div>';
-  });
-
-  html2 += '</div>';
-  wrap.innerHTML = html2;
-}
-
-// ════════════════════════════════════════════════════════════════
-//  PERCENTILE TABLE  (P50, P95, P99)
-// ════════════════════════════════════════════════════════════════
 function renderPercentiles(){
   const W = parseInt(document.getElementById('thresh-warn').value)||500;
   const C = parseInt(document.getElementById('thresh-crit').value)||2000;
@@ -1948,9 +1808,6 @@ function renderPercentiles(){
   }).join('');
 }
 
-// ════════════════════════════════════════════════════════════════
-//  EXPORT TRACE REPORT  (self-contained HTML)
-// ════════════════════════════════════════════════════════════════
 function exportTrace(e, traceId){
   e.stopPropagation();
   const trace = allTraces.find(t => t.traceId === traceId);
@@ -1968,9 +1825,9 @@ function exportTrace(e, traceId){
 
   const busRowsHtml = trace.busCalls.map(c => {
     const col = c.dur>=C?'#ef4444':c.dur>=W?'#f59e0b':'#22c55e';
-    return `<tr><td>${c.service}</td><td>${c.time}</td>
+    return `<tr><td>${esc(c.service)}</td><td>${esc(c.time)}</td>
       <td style="color:${col};font-weight:600">${c.dur ?? '—'} ms</td>
-      <td>${c.status}</td><td>${c.error||'—'}</td></tr>`;
+      <td>${esc(c.status)}</td><td>${esc(c.error)||'—'}</td></tr>`;
   }).join('');
 
   const ganttRows = trace.busCalls.map(c => {
@@ -1991,498 +1848,180 @@ function exportTrace(e, traceId){
     </div>`;
   }).join('');
 
-  const reportHtml = `<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"/><title>Trace Report · ${trace.traceId}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0b0d14;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;
-    font-size:13px;padding:32px;max-width:1100px;margin:0 auto;
-    -webkit-font-smoothing:antialiased}
-  h1{font-size:16px;font-weight:700;margin-bottom:4px}
-  h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;
-    color:#64748b;margin:24px 0 10px}
-  .meta{display:flex;gap:24px;flex-wrap:wrap;background:#13151f;border:1px solid #252838;
-    border-radius:8px;padding:14px 18px;margin-bottom:20px}
-  .meta-item label{font-size:9px;font-weight:600;text-transform:uppercase;
-    letter-spacing:1px;color:#64748b;display:block;margin-bottom:4px}
-  .meta-item .val{font-size:13px;font-weight:600}
-  table{width:100%;border-collapse:collapse;font-size:11px}
-  th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
-    color:#64748b;padding:7px 12px;border-bottom:1px solid #252838;text-align:left}
-  td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#94a3b8}
-  td:first-child{color:#e2e8f0;font-weight:500}
-  tr:last-child td{border-bottom:none}
-  tr:nth-child(even){background:rgba(255,255,255,.02)}
-  .footer{margin-top:32px;font-size:10px;color:#64748b;border-top:1px solid #252838;
-    padding-top:14px}
-</style></head><body>
-<h1>Trace Report</h1>
-<p style="color:#64748b;font-size:11px;margin-bottom:20px">Generated ${new Date().toLocaleString()}</p>
-<div class="meta">
-  <div class="meta-item"><label>Trace ID</label><div class="val" style="font-family:monospace;font-size:11px;color:#4f8eff">${trace.traceId}</div></div>
-  <div class="meta-item"><label>Request</label><div class="val" style="color:#6c63ff">${trace.requestName}</div></div>
-  <div class="meta-item"><label>Start Time</label><div class="val" style="font-family:monospace;font-size:11px">${trace.startTime}</div></div>
-  <div class="meta-item"><label>Round Trip</label><div class="val" style="color:${rttCls}">${trace.rtt} ms</div></div>
-  <div class="meta-item"><label>Bus Calls</label><div class="val">${trace.services}</div></div>
-  <div class="meta-item"><label>Status</label><div class="val" style="color:${trace.hasError?'#ef4444':'#22c55e'}">${trace.hasError?'ERROR':'SUCCESS'}</div></div>
-</div>
-${trace.accCalls.length?`<h2>Access Log Entry</h2>
-<table><thead><tr><th>Request</th><th>Timestamp</th><th>RTT</th><th>Status</th><th>Error</th></tr></thead>
-<tbody>${accRow}</tbody></table>`:''}
-<h2>Bus Service Timeline</h2>
-<div style="margin-bottom:20px">${ganttRows}</div>
-<h2>Service Detail</h2>
-<table><thead><tr><th>Service</th><th>Timestamp</th><th>Duration</th><th>Status</th><th>Error</th></tr></thead>
-<tbody>${busRowsHtml}</tbody></table>
-<div class="footer">LPT Log Analyser · Warn threshold: ${W}ms · Critical: ${C}ms</div>
-</body></html>`;
+    const reportHtml = [
+    '<!DOCTYPE html><html lang="en"><head>',
+    '<meta charset="UTF-8"/><title>Trace Report \u00b7 '+trace.traceId+'</title>',
+    '<style>',
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{background:#0b0d14;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;font-size:13px;padding:32px;max-width:1100px;margin:0 auto}',
+    'h1{font-size:16px;font-weight:700;margin-bottom:4px}',
+    'h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#64748b;margin:24px 0 10px}',
+    '.meta{display:flex;gap:24px;flex-wrap:wrap;background:#13151f;border:1px solid #252838;border-radius:8px;padding:14px 18px;margin-bottom:20px}',
+    '.meta-item label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;display:block;margin-bottom:4px}',
+    '.meta-item .val{font-size:13px;font-weight:600}',
+    'table{width:100%;border-collapse:collapse;font-size:11px}',
+    'th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;padding:7px 12px;border-bottom:1px solid #252838;text-align:left}',
+    'td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#94a3b8}',
+    'td:first-child{color:#e2e8f0;font-weight:500}',
+    'tr:last-child td{border-bottom:none}',
+    'tr:nth-child(even){background:rgba(255,255,255,.02)}',
+    '.footer{margin-top:32px;font-size:10px;color:#64748b;border-top:1px solid #252838;padding-top:14px}',
+    '</style></head><body>',
+    '<h1>Trace Report</h1>',
+    '<p style="color:#64748b;font-size:11px;margin-bottom:20px">Generated '+new Date().toLocaleString()+'</p>',
+    '<div class="meta">',
+    '<div class="meta-item"><label>Trace ID</label><div class="val" style="font-family:monospace;font-size:11px;color:#4f8eff">'+trace.traceId+'</div></div>',
+    '<div class="meta-item"><label>Request</label><div class="val" style="color:#6c63ff">'+trace.requestName+'</div></div>',
+    '<div class="meta-item"><label>Start Time</label><div class="val" style="font-family:monospace;font-size:11px">'+trace.startTime+'</div></div>',
+    '<div class="meta-item"><label>Round Trip</label><div class="val" style="color:'+rttCls+'">'+trace.rtt+' ms</div></div>',
+    '<div class="meta-item"><label>Bus Calls</label><div class="val">'+trace.services+'</div></div>',
+    '<div class="meta-item"><label>Status</label><div class="val" style="color:'+(trace.hasError?'#ef4444':'#22c55e')+'">'+(trace.hasError?'ERROR':'SUCCESS')+'</div></div>',
+    '</div>',
+    trace.accCalls.length ? '<h2>Access Log Entry</h2><table><thead><tr><th>Request</th><th>Timestamp</th><th>RTT</th><th>Status</th><th>Error</th></tr></thead><tbody>'+accRow+'</tbody></table>' : '',
+    '<h2>Bus Service Timeline</h2>',
+    '<div style="margin-bottom:20px">'+ganttRows+'</div>',
+    '<h2>Service Detail</h2>',
+    '<table><thead><tr><th>Service</th><th>Timestamp</th><th>Duration</th><th>Status</th><th>Error</th></tr></thead>',
+    '<tbody>'+busRowsHtml+'</tbody></table>',
+    '<div class="footer">LPT Log Analyser \u00b7 Warn threshold: '+W+'ms \u00b7 Critical: '+C+'ms</div>',
+    '</body></html>'
+  ].join('');
 
   const blob = new Blob([reportHtml], {type:'text/html'});
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
-  a.download = `trace_${trace.traceId.slice(0,8)}_${new Date().toISOString().slice(0,10)}.html`;
+  a.download = 'trace_'+trace.traceId.slice(0,8)+'_'+new Date().toISOString().slice(0,10)+'.html';
   a.click();
   toast('Report exported.','ok');
 }
 
-// Re-render viz when data changes
-const _origRenderTableViz = renderTable;
-renderTable = function(){
-  _origRenderTableViz();
-  document.getElementById('kb-hint').style.display = allTraces.length ? 'flex' : 'none';
-  kbIndex = -1;
-  if(vizOpen){
-    try{ renderTrend(); }catch(e){ console.warn('trend',e); }
-    try{ renderHeatmap(); }catch(e){ console.warn('heatmap',e); }
-    try{ renderPercentiles(); }catch(e){ console.warn('percentiles',e); }
-  }
-  document.getElementById('viz-panel').classList.toggle('visible', allTraces.length > 0 && vizOpen);
-};
+function exportSummaryReport(){
+  if(!allTraces.length){ toast('No data loaded','err'); return; }
+  const W = parseInt(document.getElementById('thresh-warn').value)||500;
+  const C = parseInt(document.getElementById('thresh-crit').value)||2000;
+  const total  = allTraces.length;
+  const ok     = allTraces.filter(t=>t.statusClass==='ok').length;
+  const warn   = allTraces.filter(t=>t.statusClass==='warn').length;
+  const crit   = allTraces.filter(t=>t.statusClass==='danger').length;
+  const errs   = allTraces.filter(t=>t.hasError).length;
+  const rtts   = allTraces.map(t=>t.rtt).filter(v=>v>0).sort((a,b)=>a-b);
+  const avgRtt = rtts.length ? Math.round(rtts.reduce((a,b)=>a+b,0)/rtts.length) : 0;
+  const maxRtt = rtts.length ? rtts[rtts.length-1] : 0;
+  const p95    = rtts.length ? rtts[Math.floor(rtts.length*.95)] : 0;
+  const p99    = rtts.length ? rtts[Math.floor(rtts.length*.99)] : 0;
 
+  const svcStats = buildServiceStats().sort((a,b)=>b.avg-a.avg);
 
-// ════════════════════════════════════════════════════════════════
-//  LOG FORMAT INSPECTOR
-// ════════════════════════════════════════════════════════════════
-const INSP_SAMPLE_LINES = 500;   // read first 500 lines for analysis
-const INSP_CHUNK        = 2 * 1024 * 1024; // 2MB chunks
+  const traceRows = allTraces.sort((a,b)=>b.rtt-a.rtt).map(t=>{
+    const col = t.hasError?'#ef4444':t.rtt>=C?'#ef4444':t.rtt>=W?'#f59e0b':'#22c55e';
+    const sc  = t.hasError?'ERROR':t.rtt>=C?'CRITICAL':t.rtt>=W?'WARN':'OK';
+    const scCol = t.hasError||t.rtt>=C?'#ef4444':t.rtt>=W?'#f59e0b':'#22c55e';
+    const bkNote = t.outlier?' <span style="color:#f59e0b">['+esc(t.outlier.service)+' '+t.outlier.pct+'%]</span>':'';
+    return '<tr>'
+      +'<td class="mono">'+esc(t.traceId.slice(0,18))+'...</td>'
+      +'<td style="color:#e2e8f0">'+esc(t.requestName)+'</td>'
+      +'<td class="mono" style="color:#94a3b8">'+esc(t.startTime.split(' ')[1]||'')+'</td>'
+      +'<td class="r" style="color:'+col+';font-weight:700">'+t.rtt+' ms</td>'
+      +'<td class="r">'+t.services+'</td>'
+      +'<td style="color:'+scCol+';font-weight:600">'+sc+bkNote+'</td>'
+      +'<td style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis">'+esc(t.errors.join(', ')||'—')+'</td>'
+      +'</tr>';
+  }).join('');
 
-function toggleInspector(){
-  const body = document.getElementById('insp-body');
-  const chev = document.getElementById('insp-chev');
-  const open = body.classList.toggle('open');
-  chev.classList.toggle('open', open);
-}
+  const svcRows = svcStats.map(s=>{
+    const ac = s.avg>=C?'#ef4444':s.avg>=W?'#f59e0b':'#22c55e';
+    const mc = s.max>=C?'#ef4444':s.max>=W?'#f59e0b':'#22c55e';
+    const ec = s.errors>0?'#ef4444':'#22c55e';
+    return '<tr>'
+      +'<td style="font-weight:600;color:#e2e8f0">'+esc(s.name)+'</td>'
+      +'<td class="r">'+s.calls+'</td>'
+      +'<td class="r">'+s.min+' ms</td>'
+      +'<td class="r" style="color:'+ac+';font-weight:700">'+s.avg+' ms</td>'
+      +'<td class="r">'+s.p95+' ms</td>'
+      +'<td class="r">'+s.p99+' ms</td>'
+      +'<td class="r" style="color:'+mc+';font-weight:700">'+s.max+' ms</td>'
+      +'<td class="r" style="color:'+ec+'">'+s.errors+'</td>'
+      +'</tr>';
+  }).join('');
 
-// Setup drop zone
-(function(){
-  const dz   = document.getElementById('insp-dz');
-  const inp  = document.getElementById('insp-file');
-  inp.addEventListener('change', e => { if(e.target.files[0]) runInspector(e.target.files[0]); });
-  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault(); dz.classList.remove('drag-over');
-    if(e.dataTransfer.files[0]) runInspector(e.dataTransfer.files[0]);
-  });
-})();
+  const bottlenecks = allTraces.filter(t=>t.outlier);
+  const bkRows = bottlenecks.sort((a,b)=>b.outlier.pct-a.outlier.pct).map(t=>
+    '<tr>'
+    +'<td class="mono">'+esc(t.traceId.slice(0,18))+'...</td>'
+    +'<td style="color:#f59e0b;font-weight:700">'+esc(t.outlier.service)+'</td>'
+    +'<td class="r">'+t.outlier.dur+' ms</td>'
+    +'<td class="r" style="color:#f59e0b;font-weight:700">'+t.outlier.pct+'%</td>'
+    +'<td class="r">'+t.rtt+' ms</td>'
+    +'</tr>'
+  ).join('');
 
-async function runInspector(file){
-  const prog      = document.getElementById('insp-prog');
-  const progFill  = document.getElementById('insp-prog-fill');
-  const progLabel = document.getElementById('insp-prog-label');
-  const results   = document.getElementById('insp-results');
+  const css = [
+    'body{background:#0b0d14;color:#e2e8f0;font-family:system-ui,sans-serif;font-size:13px;padding:32px;max-width:1400px;margin:0 auto;-webkit-font-smoothing:antialiased}',
+    '.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:28px}',
+    '.kpi{background:#13151f;border:1px solid #252838;border-radius:8px;padding:14px 18px}',
+    '.kpi label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;display:block;margin-bottom:6px}',
+    '.kpi-val{font-size:22px;font-weight:700;font-family:monospace;line-height:1.2}',
+    'h2{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.4px;color:#64748b;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #252838}',
+    'table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px;table-layout:fixed}',
+    'th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#64748b;padding:8px 12px;border-bottom:2px solid #252838;text-align:left;white-space:nowrap}',
+    'th.r{text-align:right}',
+    'td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}',
+    'td.r{text-align:right;font-family:monospace}',
+    'td.c{text-align:center}',
+    'tr:hover td{background:rgba(255,255,255,.03)}',
+    '.mono{font-family:monospace;font-size:10px;color:#94a3b8}',
+    '.footer{margin-top:32px;font-size:10px;color:#64748b;border-top:1px solid #252838;padding-top:12px;display:flex;justify-content:space-between}'
+  ].join('');
 
-  prog.style.display    = 'block';
-  results.style.display = 'none';
-  progFill.style.width  = '0%';
-  progLabel.textContent = 'Reading ' + fmtSize(file.size) + '…';
-
-  // Read up to first INSP_CHUNK bytes (enough for 500+ lines in any log)
-  const readSize = Math.min(file.size, INSP_CHUNK);
-  const slice    = file.slice(0, readSize);
-  const text     = await readSlice(slice);
-  progFill.style.width  = '60%';
-  progLabel.textContent = 'Analysing patterns…';
-  await yieldToBrowser();
-
-  const lines = text.split('\n').filter(l => l.trim()).slice(0, INSP_SAMPLE_LINES);
-  progFill.style.width  = '90%';
-  await yieldToBrowser();
-
-  const report = analyseLines(lines, file.name, file.size);
-  progFill.style.width  = '100%';
-  await yieldToBrowser();
-
-  renderInspectorReport(report);
-  prog.style.display    = 'none';
-  results.style.display = 'block';
-}
-
-function analyseLines(lines, filename, filesize){
-  const total = lines.length;
-  if(!total) return { error: 'No lines found in sample.' };
-
-  // ── Timestamp ────────────────────────────────────────────────
-  const tsPatterns = [
-    { re: /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)/, name: 'YYYY-MM-DD HH:mm:ss,SSS  (comma ms)', key: 'comma_ms' },
-    { re: /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)/, name: 'YYYY-MM-DD HH:mm:ss.SSS  (dot ms)',   key: 'dot_ms'   },
-    { re: /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/, name: 'ISO 8601 (T separator)',         key: 'iso'      },
-    { re: /^(\d{2}\/\w+\/\d{4}:\d{2}:\d{2}:\d{2})/, name: 'Apache / W3C (d/Mon/YYYY)',    key: 'apache'   },
+  const rttCol = avgRtt>=C?'#ef4444':avgRtt>=W?'#f59e0b':'#22c55e';
+  const parts = [
+    '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>',
+    '<title>LPT Summary Report</title>',
+    '<style>'+css+'</style></head><body>',
+    '<h1 style="font-size:18px;font-weight:700;margin-bottom:4px">LPT Test Run Summary</h1>',
+    '<p style="color:#64748b;font-size:11px;margin-bottom:24px">Generated '+new Date().toLocaleString()+' &nbsp;·&nbsp; Warn: '+W+'ms &nbsp;·&nbsp; Critical: '+C+'ms</p>',
+    '<div class="kpi-grid">',
+    '<div class="kpi"><label>Total Requests</label><div class="kpi-val" style="color:#e2e8f0">'+total+'</div></div>',
+    '<div class="kpi"><label>Avg RTT</label><div class="kpi-val" style="color:'+rttCol+'">'+avgRtt+' ms</div></div>',
+    '<div class="kpi"><label>P95 RTT</label><div class="kpi-val" style="color:'+(p95>=C?'#ef4444':p95>=W?'#f59e0b':'#22c55e')+'">'+p95+' ms</div></div>',
+    '<div class="kpi"><label>P99 RTT</label><div class="kpi-val" style="color:'+(p99>=C?'#ef4444':p99>=W?'#f59e0b':'#22c55e')+'">'+p99+' ms</div></div>',
+    '<div class="kpi"><label>Max RTT</label><div class="kpi-val" style="color:'+(maxRtt>=C?'#ef4444':maxRtt>=W?'#f59e0b':'#22c55e')+'">'+maxRtt+' ms</div></div>',
+    '<div class="kpi"><label>OK</label><div class="kpi-val" style="color:#22c55e">'+ok+'</div></div>',
+    '<div class="kpi"><label>Warn</label><div class="kpi-val" style="color:#f59e0b">'+warn+'</div></div>',
+    '<div class="kpi"><label>Critical / Error</label><div class="kpi-val" style="color:#ef4444">'+(crit+errs)+'</div></div>',
+    '<div class="kpi"><label>Bottleneck Traces</label><div class="kpi-val" style="color:#f59e0b">'+bottlenecks.length+'</div></div>',
+    '</div>',
+    '<h2>Service Performance</h2>',
+    '<table><colgroup><col style="width:20%"/><col style="width:8%"/><col style="width:12%"/><col style="width:12%"/><col style="width:12%"/><col style="width:12%"/><col style="width:12%"/><col style="width:12%"/></colgroup><thead><tr><th>Service</th><th class="r">Calls</th><th class="r">Min</th><th class="r">Avg</th><th class="r">P95</th><th class="r">P99</th><th class="r">Max</th><th class="r">Errors</th></tr></thead>',
+    '<tbody>'+svcRows+'</tbody></table>',
+    bottlenecks.length ? '<h2>Bottleneck Analysis (service &gt;50% of RTT)</h2>'
+      +'<table><colgroup><col style="width:28%"/><col style="width:26%"/><col style="width:16%"/><col style="width:14%"/><col style="width:16%"/></colgroup><thead><tr><th>Trace</th><th>Bottleneck Service</th><th class="r">Duration</th><th class="r">% of RTT</th><th class="r">Total RTT</th></tr></thead>'
+      +'<tbody>'+bkRows+'</tbody></table>' : '',
+    '<h2>All Traces ('+total+')</h2>',
+    '<table><colgroup><col style="width:20%"/><col style="width:18%"/><col style="width:12%"/><col style="width:10%"/><col style="width:7%"/><col style="width:14%"/><col style="width:19%"/></colgroup><thead><tr><th>Trace ID</th><th>Request</th><th>Time</th><th class="r">RTT</th><th class="r">Calls</th><th>Status</th><th>Error</th></tr></thead>',
+    '<tbody>'+traceRows+'</tbody></table>',
+    '<div class="footer"><span>LPT Log Analyser &mdash; Summary Report</span><span>Warn: '+W+'ms &nbsp;&middot;&nbsp; Critical: '+C+'ms</span></div>',
+    '</body></html>'
   ];
-  const tsHits  = {};
-  const tsSamples = {};
-  tsPatterns.forEach(p => { tsHits[p.key]=0; tsSamples[p.key]=[]; });
-  lines.forEach(l => {
-    for(const p of tsPatterns){
-      const m = l.match(p.re);
-      if(m){ tsHits[p.key]++; if(tsSamples[p.key].length<2) tsSamples[p.key].push(m[1]); break; }
-    }
-  });
-  const bestTs = tsPatterns.reduce((a,b) => tsHits[b.key]>tsHits[a.key]?b:a, tsPatterns[0]);
 
-  // ── TraceId ──────────────────────────────────────────────────
-  const tracePatterns = [
-    { re: /TraceId[=:]\s*([a-f0-9A-F\-]{8,})/,           name: 'TraceId=<uuid>',          key:'tid_eq'  },
-    { re: /traceid[=:]\s*([a-f0-9A-F\-]{8,})/i,          name: 'traceid= (any case)',      key:'tid_lc'  },
-    { re: /trace[_\-]id[=:]\s*([a-f0-9A-F\-]{8,})/i,   name: 'trace_id or trace-id',     key:'tid_sep' },
-    { re: /\bX-B3-TraceId[=:]\s*([a-f0-9]{16,32})/,      name: 'X-B3-TraceId (Zipkin)',    key:'b3'      },
-    { re: /\[([a-f0-9A-F\-]{8}-[a-f0-9A-F\-]{4}-[a-f0-9A-F\-]{4}-[a-f0-9A-F\-]{4}-[a-f0-9A-F\-]{12})\]/, name: 'UUID in brackets [...]', key:'uuid_bracket' },
-  ];
-  const traceHits = {}; const traceSamples = {}; const traceFormats = {};
-  tracePatterns.forEach(p => { traceHits[p.key]=0; traceSamples[p.key]=[]; traceFormats[p.key]=new Set(); });
-  lines.forEach(l => {
-    for(const p of tracePatterns){
-      const m = l.match(p.re);
-      if(m){
-        traceHits[p.key]++;
-        if(traceSamples[p.key].length<2) traceSamples[p.key].push(m[1]);
-        // Detect format: UUID vs hex vs numeric
-        const val = m[1];
-        if(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(val)) traceFormats[p.key].add('UUID');
-        else if(/^[a-f0-9]+$/.test(val)) traceFormats[p.key].add('hex string');
-        else traceFormats[p.key].add('mixed/other');
-        break;
-      }
-    }
-  });
-  const noTrace = lines.filter(l => !tracePatterns.some(p => p.re.test(l))).length;
-
-  // ── Duration ─────────────────────────────────────────────────
-  const durPatterns = [
-    { re: /received in\s*:\s*(\d+(?:\.\d+)?)\s*\[ms\]/i,  name: 'received in : 152 [ms]',  key:'recv_bracket' },
-    { re: /received in\s*(\d+(?:\.\d+)?)\s*ms\b/i,          name: 'received in 69 ms',       key:'recv_plain'   },
-    { re: /received in\s*:\s*(\d+(?:\.\d+)?)\s*ms\b/i,     name: 'received in : 69 ms',     key:'recv_colon'   },
-    { re: /\btime=(\d+(?:\.\d+)?)\b/i,                        name: 'time=6055',               key:'time_eq'      },
-    { re: /duration=(\d+(?:\.\d+)?)\s*\[?ms?\]?/i,          name: 'duration=1200[ms]',       key:'dur_eq'       },
-    { re: /(\d+(?:\.\d+)?)\s*\[ms\]/i,                       name: '558[ms]',                 key:'bare_bracket' },
-    { re: /(\d+(?:\.\d+)?)\s*ms\b/i,                          name: '558 ms',                  key:'bare_plain'   },
-  ];
-  const durHits = {}; const durSamples = {}; const durVals = {};
-  durPatterns.forEach(p => { durHits[p.key]=0; durSamples[p.key]=[]; durVals[p.key]=[]; });
-  lines.forEach(l => {
-    for(const p of durPatterns){
-      const m = l.match(p.re);
-      if(m){
-        durHits[p.key]++;
-        if(durSamples[p.key].length<2) durSamples[p.key].push(m[0]);
-        durVals[p.key].push(parseFloat(m[1]));
-        break;
-      }
-    }
-  });
-
-  // ── Service name ─────────────────────────────────────────────
-  const svcPatterns = [
-    { re: />\s+([\w.]+(?:\.[\w]+)+)\s*[–\-]\s*(\w+)\s+(?:Request|Response|Read|Write)\s+received/i,
-      name: 'classpath – LABEL received in',  key:'dash_label', extract: m => m[2] },
-    { re: /[–\-]\s+([A-Z][A-Za-z0-9]+)\s+(?:Request|Response|Read|Write|DO|KAC|ADC)/,
-      name: '– LABEL Request/Response/…',     key:'dash_word',  extract: m => m[1] },
-    { re: />\s+([\w.]+(?:\.[\w]+){2,})\s/,
-      name: 'class path after > header',      key:'classpath',  extract: m => m[1].split('.').pop() },
-    { re: /service[=:]\s*([\w.\-:]+)/i,
-      name: 'service=Name',                   key:'svc_eq',     extract: m => m[1] },
-    { re: /request=(\w+)/i,
-      name: 'request=Name  (access log)',      key:'req_eq',     extract: m => m[1] },
-  ];
-  const svcHits = {}; const svcSamples = {}; const svcNames = {};
-  svcPatterns.forEach(p => { svcHits[p.key]=0; svcSamples[p.key]=[]; svcNames[p.key]=new Set(); });
-  lines.forEach(l => {
-    for(const p of svcPatterns){
-      const m = l.match(p.re);
-      if(m){
-        svcHits[p.key]++;
-        const name = p.extract(m);
-        svcNames[p.key].add(name);
-        if(svcSamples[p.key].length<2) svcSamples[p.key].push(name);
-        break;
-      }
-    }
-  });
-
-  // ── Request name ─────────────────────────────────────────────
-  const reqMatches = lines.map(l => { const m=l.match(/Request=(\w+)/); return m?m[1]:null; }).filter(Boolean);
-  const reqCounts  = {};
-  reqMatches.forEach(r => reqCounts[r]=(reqCounts[r]||0)+1);
-
-  // ── Log level ────────────────────────────────────────────────
-  const levels = {};
-  lines.forEach(l => {
-    const m = l.match(/\b(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\b/);
-    if(m) levels[m[1]] = (levels[m[1]]||0)+1;
-  });
-
-  // ── Status / error fields ────────────────────────────────────
-  const statusMatches = lines.map(l => { const m=l.match(/status[=:]\s*([^\s,\]>]+)/i); return m?m[1]:null; }).filter(Boolean);
-  const statusCounts  = {};
-  statusMatches.forEach(s => statusCounts[s]=(statusCounts[s]||0)+1);
-  const errorMatches  = lines.map(l => { const m=l.match(/error[=:]\s*([^\s,\]>]+)/i); return m?m[1]:null; }).filter(Boolean);
-  const errorSamples  = [...new Set(errorMatches)].slice(0,5);
-
-  // ── Sample lines ─────────────────────────────────────────────
-  const sampleLines = lines.slice(0,3);
-
-  return {
-    filename, filesize, totalSampled: total,
-    timestamp:  { best: bestTs, hits: tsHits, samples: tsSamples, patterns: tsPatterns },
-    traceId:    { hits: traceHits, samples: traceSamples, formats: traceFormats, noTrace, patterns: tracePatterns },
-    duration:   { hits: durHits, samples: durSamples, patterns: durPatterns },
-    service:    { hits: svcHits, samples: svcSamples, names: svcNames, patterns: svcPatterns },
-    requestName:{ counts: reqCounts },
-    logLevel:   { counts: levels },
-    status:     { counts: statusCounts },
-    errors:     { samples: errorSamples },
-    sampleLines,
-  };
-}
-
-function renderInspectorReport(r){
-  const el = document.getElementById('insp-results');
-  if(r.error){ el.innerHTML=`<div style="color:var(--dg);font-family:var(--fb);font-size:12px;padding:12px 0">${r.error}</div>`; return; }
-
-  const pct = n => ((n/r.totalSampled)*100).toFixed(0)+'%';
-  const bar = (hits, total, col='var(--ok)') => {
-    const p = Math.round((hits/total)*100);
-    return `<div style="height:4px;border-radius:2px;background:var(--bd);margin-top:4px;overflow:hidden">
-      <div style="width:${p}%;height:100%;background:${col};border-radius:2px"></div></div>`;
-  };
-
-  // Best timestamp
-  const bts = r.timestamp.best;
-  const btsHit = r.timestamp.hits[bts.key];
-
-  // Best traceId pattern
-  const bestTrace = r.traceId.patterns.reduce((a,b) =>
-    r.traceId.hits[b.key]>r.traceId.hits[a.key]?b:a, r.traceId.patterns[0]);
-  const bestTraceHit = r.traceId.hits[bestTrace.key];
-
-  // Duration variants found
-  const durFound = r.duration.patterns.filter(p => r.duration.hits[p.key]>0)
-    .sort((a,b)=>r.duration.hits[b.key]-r.duration.hits[a.key]);
-
-  // Service patterns found
-  const svcFound = r.service.patterns.filter(p => r.service.hits[p.key]>0)
-    .sort((a,b)=>r.service.hits[b.key]-r.service.hits[a.key]);
-
-  // Unique service names
-  const allSvcNames = new Set();
-  svcFound.forEach(p => r.service.names[p.key].forEach(n => allSvcNames.add(n)));
-
-  // Request names
-  const reqSorted = Object.entries(r.requestName.counts).sort((a,b)=>b[1]-a[1]);
-
-  // Log levels
-  const levelStr = Object.entries(r.logLevel.counts).sort((a,b)=>b[1]-a[1])
-    .map(([k,v])=>`<span class="insp-variant-count">${v}</span> ${k}`).join('  ');
-
-  // Status values
-  const statusStr = Object.entries(r.status.counts).sort((a,b)=>b[1]-a[1]).slice(0,6)
-    .map(([k,v])=>`<span class="insp-variant-count">${v}</span> ${k}`).join('  ');
-
-  // Exportable summary text
-  const exportText = buildExportText(r, bts, btsHit, bestTrace, bestTraceHit, durFound, svcFound, allSvcNames, reqSorted);
-
-  el.innerHTML = `
-    <div class="insp-summary-box">
-      Scanned <strong>${r.totalSampled} lines</strong> from <strong>${r.filename}</strong> (${fmtSize(r.filesize)}).
-      ${btsHit>0?`Timestamps match <strong>${bts.name}</strong> on ${pct(btsHit)} of lines.`:'No timestamp pattern matched.'}
-      ${bestTraceHit>0?`TraceId found via <strong>${bestTrace.name}</strong> on ${pct(bestTraceHit)} of lines.`:'<span style="color:var(--dg)">No TraceId pattern matched.</span>'}
-      ${durFound.length?`Duration found in <strong>${durFound.length} format(s)</strong>.`:'<span style="color:var(--dg)">No duration pattern found.</span>'}
-    </div>
-
-    <div class="insp-section">
-      <div class="insp-section-title">Timestamp Format</div>
-      <div class="insp-grid">
-        ${r.timestamp.patterns.map(p=>{
-          const h=r.timestamp.hits[p.key];
-          const col=h>0?'var(--ok)':'var(--dg)';
-          return`<div class="insp-item">
-            <div class="insp-item-key">${p.name}</div>
-            <div class="insp-item-val ${h>0?'hit':'miss'}">${h} lines (${pct(h)})</div>
-            ${bar(h,r.totalSampled,h>0?'var(--ok)':'var(--bd)')}
-            ${r.timestamp.samples[p.key].length?`<div class="insp-sample">${r.timestamp.samples[p.key].join('\n')}</div>`:''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <div class="insp-section">
-      <div class="insp-section-title">TraceId / Correlation ID</div>
-      <div class="insp-grid">
-        ${r.traceId.patterns.map(p=>{
-          const h=r.traceId.hits[p.key];
-          const fmts=[...( r.traceId.formats[p.key]||new Set())].join(', ');
-          return`<div class="insp-item">
-            <div class="insp-item-key">${p.name}</div>
-            <div class="insp-item-val ${h>0?'hit':'miss'}">${h} lines (${pct(h)}) ${fmts?`<span class="warn">· ${fmts}</span>`:''}
-            </div>
-            ${bar(h,r.totalSampled,h>0?'var(--ok)':'var(--bd)')}
-            ${r.traceId.samples[p.key].length?`<div class="insp-sample">${r.traceId.samples[p.key].join('\n')}</div>`:''}
-          </div>`;
-        }).join('')}
-      </div>
-      ${r.traceId.noTrace>0?`<div style="font-family:var(--fb);font-size:11px;color:var(--dg);margin-top:8px">${r.traceId.noTrace} lines (${pct(r.traceId.noTrace)}) have no TraceId match.</div>`:''}
-    </div>
-
-    <div class="insp-section">
-      <div class="insp-section-title">Duration / Time Format</div>
-      ${durFound.length===0?'<div style="font-family:var(--fb);font-size:11px;color:var(--dg)">No duration pattern matched in sample.</div>':''}
-      <div class="insp-variants">
-        ${durFound.map(p=>`<div class="insp-variant">
-          <span class="insp-variant-count">${r.duration.hits[p.key]}</span>
-          <span style="font-family:var(--fm);font-size:11px;color:var(--tx2)">${p.name}</span>
-          <span style="color:var(--tx3);font-size:10px">e.g. ${(r.duration.samples[p.key][0]||'').slice(0,40)}</span>
-        </div>`).join('')}
-      </div>
-      <div style="font-family:var(--fb);font-size:11px;color:var(--tx3);margin-top:8px">
-        ${r.duration.patterns.filter(p=>r.duration.hits[p.key]===0).length} patterns had 0 matches.
-      </div>
-    </div>
-
-    <div class="insp-section">
-      <div class="insp-section-title">Service Name Pattern</div>
-      ${svcFound.length===0?'<div style="font-family:var(--fb);font-size:11px;color:var(--dg)">No service name pattern matched.</div>':''}
-      <div class="insp-variants">
-        ${svcFound.map(p=>`<div class="insp-variant">
-          <span class="insp-variant-count">${r.service.hits[p.key]}</span>
-          <span style="font-family:var(--fm);font-size:11px;color:var(--tx2)">${p.name}</span>
-          <span style="color:var(--tx3);font-size:10px">→ ${r.service.samples[p.key].slice(0,2).join(', ')}</span>
-        </div>`).join('')}
-      </div>
-      ${allSvcNames.size>0?`<div style="font-family:var(--fb);font-size:11px;color:var(--tx3);margin-top:8px">
-        Detected service names: <span style="font-family:var(--fm);color:var(--ac)">${[...allSvcNames].slice(0,10).join(', ')}${allSvcNames.size>10?' …':''}</span>
-      </div>`:''}
-    </div>
-
-    ${reqSorted.length?`<div class="insp-section">
-      <div class="insp-section-title">Request Name (Request= field)</div>
-      <div class="insp-variants">
-        ${reqSorted.slice(0,5).map(([k,v])=>`<div class="insp-variant">
-          <span class="insp-variant-count">${v}</span>
-          <span style="font-family:var(--fm);font-size:11px;color:var(--ac2)">${k}</span>
-        </div>`).join('')}
-      </div>
-    </div>`:''}
-
-    <div class="insp-section">
-      <div class="insp-section-title">Other Fields</div>
-      <div class="insp-grid">
-        <div class="insp-item">
-          <div class="insp-item-key">Log levels</div>
-          <div class="insp-item-val">${levelStr||'<span class="miss">none found</span>'}</div>
-        </div>
-        <div class="insp-item">
-          <div class="insp-item-key">Status values</div>
-          <div class="insp-item-val">${statusStr||'<span class="miss">none found</span>'}</div>
-        </div>
-        ${r.errors.samples.length?`<div class="insp-item">
-          <div class="insp-item-key">Error values (samples)</div>
-          <div class="insp-item-val">${r.errors.samples.join(', ')}</div>
-        </div>`:''}
-      </div>
-    </div>
-
-    <div class="insp-section">
-      <div class="insp-section-title">Sample Lines (first 3)</div>
-      <div class="insp-sample">${r.sampleLines.map(l=>l.slice(0,300)).join('\n\n')}</div>
-    </div>
-
-    <div class="insp-export-btn">
-      <button class="btn bg bx" onclick="copyInspectorReport()">📋 Copy full report</button>
-      <button class="btn bg bx" onclick="downloadInspectorReport()">⬇ Download report</button>
-    </div>
-    <textarea id="insp-export-text" style="position:absolute;opacity:0;pointer-events:none;height:1px">${exportText.replace(/</g,'&lt;')}</textarea>
-  `;
-}
-
-function buildExportText(r, bts, btsHit, bestTrace, bestTraceHit, durFound, svcFound, allSvcNames, reqSorted){
-  const pct = n => ((n/r.totalSampled)*100).toFixed(0)+'%';
-  let t = `LPT LOG FORMAT INSPECTOR REPORT
-Generated: ${new Date().toLocaleString()}
-File: ${r.filename}  (${fmtSize(r.filesize)})
-Lines sampled: ${r.totalSampled}
-${'='.repeat(60)}
-
-TIMESTAMP
-  Best match : ${bts.name}
-  Coverage   : ${btsHit} lines (${pct(btsHit)})
-  Sample     : ${(r.timestamp.samples[bts.key]||[]).join(' | ')}
-
-TRACEID
-  Best match : ${bestTrace.name}
-  Coverage   : ${bestTraceHit} lines (${pct(bestTraceHit)})
-  Format     : ${[...( r.traceId.formats[bestTrace.key]||new Set())].join(', ')||'unknown'}
-  Sample     : ${(r.traceId.samples[bestTrace.key]||[]).join(' | ')}
-  Lines with no TraceId: ${r.traceId.noTrace}
-
-DURATION FORMAT(S) FOUND
-${durFound.length===0?'  NONE matched':durFound.map(p=>`  [${r.duration.hits[p.key]} lines] ${p.name}  e.g. ${(r.duration.samples[p.key][0]||'').trim()}`).join('\n')}
-
-SERVICE NAME PATTERN(S)
-${svcFound.length===0?'  NONE matched':svcFound.map(p=>`  [${r.service.hits[p.key]} lines] ${p.name}  → ${r.service.samples[p.key].slice(0,3).join(', ')}`).join('\n')}
-  Detected names: ${[...allSvcNames].slice(0,15).join(', ')}
-
-REQUEST NAME (Request= field)
-${reqSorted.length===0?'  none found':reqSorted.slice(0,5).map(([k,v])=>`  [${v}] ${k}`).join('\n')}
-
-LOG LEVELS
-  ${Object.entries(r.logLevel.counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}: ${v}`).join('  ')||'none'}
-
-STATUS VALUES
-  ${Object.entries(r.status.counts).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>`${k}: ${v}`).join('  ')||'none'}
-
-SAMPLE LINES (first 3)
-${r.sampleLines.map((l,i)=>`[${i+1}] ${l.slice(0,300)}`).join('\n')}
-`;
-  return t;
-}
-
-let _lastInspReport = '';
-function copyInspectorReport(){
-  const txt = document.getElementById('insp-export-text');
-  const raw = txt.value || txt.textContent;
-  _lastInspReport = raw.replace(/&lt;/g,'<');
-  navigator.clipboard.writeText(_lastInspReport).then(()=>toast('Report copied to clipboard!','ok')).catch(()=>{
-    // fallback select
-    txt.style.opacity='1';txt.select();document.execCommand('copy');txt.style.opacity='0';
-    toast('Report copied.','ok');
-  });
-}
-function downloadInspectorReport(){
-  const txt = document.getElementById('insp-export-text');
-  const raw = (txt.value||txt.textContent).replace(/&lt;/g,'<');
+  const blob = new Blob([parts.join('')], {type:'text/html'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([raw],{type:'text/plain'}));
-  a.download = 'log_inspector_report.txt';
+  a.href = URL.createObjectURL(blob);
+  a.download = 'lpt_summary_'+new Date().toISOString().slice(0,10)+'.html';
   a.click();
-  toast('Report downloaded.','ok');
+  toast('Summary report downloaded — check your downloads folder.','ok');
 }
 
 let tt;
 function toast(msg,type=''){
-  const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');
-  clearTimeout(tt);tt=setTimeout(()=>el.className='',3200);
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='show '+(type||'');
+  clearTimeout(tt);
+  tt=setTimeout(()=>el.className='',3200);
 }
 document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
 </script>
 </body>
 </html>
