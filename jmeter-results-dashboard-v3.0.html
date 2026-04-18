@@ -1,0 +1,4055 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<!--
+  JMeter Results Dashboard
+  Version: 3.0.0
+  Released: 2026-03-12
+  ──────────────────────────────────────────────────────────────
+  CHANGELOG v3.0.0
+  ─────────────
+  Core features:
+  · Single-file HTML dashboard — no server, no dependencies
+  · Drag-and-drop .jtl / .csv file loading (or click to browse)
+  · Drop .jmx + .jtl together to auto-populate service name in header
+  · Dark / light theme toggle (stable at all device pixel ratios)
+
+  Dashboard sections:
+  · Run timeline with animated progress bar
+  · 6 KPI summary cards (samples, avg, throughput, error rate, bytes, P90)
+  · Response time over time chart (avg / P95 / min)
+  · Error rate over time chart
+  · Throughput (req/s) over time chart
+  · Response time density curve (P50 / P90 / P99 markers)
+  · Response time percentiles (P50 / P75 / P90 / P99)
+  · Test health scorecard with A–F grade
+  · Error analysis panel (filter by 5xx / 4xx / other, search, expandable details)
+  · Per-request breakdown table (sortable, filterable, paginated)
+  · Slowest transactions top-3
+  · HTTP status breakdown (donut + bar list)
+  · Request log viewer (separate .jtl drop, sortable, filterable, detail drawer)
+
+  Export:
+  · Export PDF (print dialog with full theme preservation)
+  · Export CSV (per-request stats)
+  · Screenshot capture (html2canvas)
+
+  Bug fixes applied before v3.0:
+  · Chart height doubling on every theme toggle at DPR > 1 (canvas.height
+    attribute was overwritten with DPR-scaled value on each redraw; fixed
+    by storing original logical height in data-lh dataset attribute)
+  · Canvas width feedback loop on theme toggle (fixed by reading W from
+    chart-box grid cell via getComputedStyle, not from canvas.offsetWidth)
+  · PDF white gap (errDetailBody overflow:visible)
+  · Error analysis filter bar hidden in print/PDF
+  · Service name tag placeholder always visible (now only shown when .jmx dropped)
+  · Dead CSS removed (.err-table, .err-count, .chart-box.full)
+
+  Security fixes applied before v3.0:
+  · XSS: r.label unescaped in renderTableRow and renderSlowestTransactions
+  · XSS: g.label and g.code unescaped in error analysis table
+  · XSS: r.code unescaped in log viewer table
+  · XSS: traceId unescaped in display and inline onclick handler
+         (display now uses escHtml(); clipboard uses data-copy attribute)
+  ──────────────────────────────────────────────────────────────
+-->
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JMeter Results Dashboard v3.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090d;
+  --s1: #0d1117;
+  --s2: #111820;
+  --border: #1c2a3a;
+  --border2: #253545;
+  --green: #00d97e;
+  --red: #ff4560;
+  --blue: #38b6ff;
+  --yellow: #ffd166;
+  --purple: #c084fc;
+  --orange: #fb923c;
+  --text: #dce8f5;
+  --muted: #4a6070;
+  --muted2: #2a3a4a;
+}
+
+html.light {
+  --bg: #f0f4f8;
+  --s1: #ffffff;
+  --s2: #e8eef5;
+  --border: #c8d6e5;
+  --border2: #a8bcce;
+  --green: #059669;
+  --red: #e11d48;
+  --blue: #0284c7;
+  --yellow: #d97706;
+  --purple: #7c3aed;
+  --orange: #ea580c;
+  --text: #0f1f2e;
+  --muted: #64748b;
+  --muted2: #94a3b8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;font-weight:400;min-height:100vh;}
+
+/* ── DROP ZONE ── */
+#dropZone {
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:500;
+}
+.drop-card{
+  width:600px;border:1px solid var(--border2);background:var(--s1);padding:50px 40px;
+  text-align:center;position:relative;overflow:hidden;
+}
+.drop-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(56,182,255,0.06) 0%, transparent 65%);
+  pointer-events:none;
+}
+.drop-icon{font-size:48px;margin-bottom:16px;opacity:0.6;}
+.drop-card h2{font-size:24px;font-weight:800;color:var(--blue);letter-spacing:0.5px;margin-bottom:8px;}
+.drop-card p{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.drop-area{
+  border:1.5px dashed var(--border2);padding:32px;margin-bottom:20px;
+  cursor:pointer;transition:all 0.2s;position:relative;
+}
+.drop-area:hover,.drop-area.dragover{border-color:var(--blue);background:rgba(56,182,255,0.04);}
+.drop-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.drop-area-text{font-family:'Fira Code',monospace;font-size:13px;color:var(--muted);}
+.drop-area-text span{color:var(--blue);}
+.or-divider{font-size:11px;color:var(--muted);letter-spacing:2px;margin:14px 0;}
+.btn-demo-load{
+  font-family:'Fira Code',monospace;font-size:12px;
+  padding:10px 24px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);cursor:pointer;
+  letter-spacing:1px;width:100%;transition:all 0.2s;
+}
+.btn-demo-load:hover{border-color:var(--blue);color:var(--blue);}
+.format-hint{
+  margin-top:18px;font-family:'Fira Code',monospace;font-size:10px;
+  color:var(--muted);line-height:1.7;text-align:left;
+  border-top:1px solid var(--border);padding-top:14px;
+}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 24px;border-bottom:1px solid var(--border);
+  background:var(--s1);position:sticky;top:0;z-index:100;
+}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-icon{
+  width:30px;height:30px;background:var(--blue);
+  display:grid;place-items:center;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+}
+.brand-icon span{font-size:12px;font-weight:800;color:var(--bg);}
+.brand h1{font-size:15px;font-weight:800;color:var(--text);letter-spacing:1px;}
+.brand p{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);}
+.header-right{display:flex;align-items:center;gap:12px;}
+.file-tag{
+  font-family:'Fira Code',monospace;font-size:11px;
+  background:var(--s2);border:1px solid var(--border);
+  padding:5px 12px;color:var(--blue);
+}
+.hbtn{
+  font-family:'Fira Code',monospace;font-size:11px;
+  padding:6px 14px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);cursor:pointer;
+  letter-spacing:1px;transition:all 0.2s;
+}
+.hbtn:hover{border-color:var(--blue);color:var(--blue);}
+.hbtn.primary{border-color:var(--blue);color:var(--blue);}
+.hbtn.primary:hover{background:var(--blue);color:var(--bg);}
+
+/* ── MAIN ── */
+main{padding:20px 24px;display:flex;flex-direction:column;gap:18px;}
+
+/* ── SUMMARY STRIP ── */
+.summary-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+.sum-card{
+  background:var(--s1);border:1px solid var(--border);
+  padding:16px 18px;position:relative;overflow:hidden;
+}
+.sum-card::after{
+  content:attr(data-icon);position:absolute;right:12px;top:10px;
+  font-size:22px;opacity:0.07;
+}
+.sum-label{
+  font-family:'Fira Code',monospace;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:8px;
+}
+.sum-value{font-size:26px;font-weight:700;line-height:1;}
+.sum-sub{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* ── CHARTS ── */
+.charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+.chart-box{background:var(--s1);border:1px solid var(--border);padding:18px;min-width:0;overflow:visible;}
+
+.chart-title{
+  font-family:'Fira Code',monospace;font-size:10px;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;
+}
+.chart-title-right{display:flex;gap:12px;}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.leg-dot{width:8px;height:2px;}
+canvas{width:100%;display:block;text-rendering:geometricPrecision;-webkit-font-smoothing:antialiased;}
+#columnBanner{display:none;}
+
+/* ── TABLE ── */
+.table-box{background:var(--s1);border:1px solid var(--border);padding:0;overflow:hidden;}
+.table-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+}
+.table-search{
+  font-family:'Fira Code',monospace;font-size:12px;
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--text);padding:6px 12px;width:240px;outline:none;
+}
+.table-search:focus{border-color:var(--blue);}
+.sort-btns{display:flex;gap:6px;}
+.sort-btn{
+  font-family:'Fira Code',monospace;font-size:10px;
+  padding:5px 10px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;transition:all 0.2s;
+}
+.sort-btn:hover,.sort-btn.active{border-color:var(--blue);color:var(--blue);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{
+  background:var(--s2);font-family:'Fira Code',monospace;
+  font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);padding:10px 16px;text-align:left;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  white-space:nowrap;
+}
+.tbl th:hover{color:var(--blue);}
+.tbl td{
+  padding:10px 16px;font-size:12px;border-bottom:1px solid var(--border);
+  font-family:'Fira Code',monospace;white-space:nowrap;
+}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(56,182,255,0.03);}
+.pass-pill{
+  display:inline-block;padding:2px 8px;font-size:9px;
+  font-family:'Fira Code',monospace;letter-spacing:1px;
+}
+.pass-pill.pass{background:rgba(0,217,126,0.12);color:var(--green);border:1px solid rgba(0,217,126,0.25);}
+.pass-pill.fail{background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.25);}
+.resp-bar{
+  display:flex;align-items:center;gap:8px;
+}
+.resp-bar-track{width:60px;height:4px;background:var(--border);overflow:hidden;}
+.resp-bar-fill{height:100%;transition:width 0.5s;}
+
+/* Percentile box */
+.perc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px;}
+.perc-cell{
+  border:1px solid var(--border);padding:12px;text-align:center;
+  background:var(--s2);
+}
+.perc-label{font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;}
+.perc-val{font-family:'Fira Code',monospace;font-size:18px;}
+
+/* Bottom grid */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--muted2);}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--border);}
+.pg-btn{
+  font-family:'Fira Code',monospace;font-size:11px;
+  padding:4px 10px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;transition:all 0.2s;
+}
+.pg-btn:hover,.pg-btn.active{border-color:var(--blue);color:var(--blue);}
+.pg-info{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);margin-left:auto;}
+
+/* ── THEME TOGGLE ── */
+.theme-toggle{
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);
+  padding:5px 12px;border:1px solid var(--border2);
+  background:transparent;transition:all 0.2s;user-select:none;
+}
+.theme-toggle:hover{border-color:var(--blue);color:var(--blue);}
+.toggle-track{
+  width:32px;height:16px;border-radius:8px;
+  background:var(--muted2);position:relative;
+  transition:background 0.3s;flex-shrink:0;
+}
+html.light .toggle-track{background:var(--blue);}
+.toggle-thumb{
+  position:absolute;top:2px;left:2px;
+  width:12px;height:12px;border-radius:50%;
+  background:#aaa;transition:all 0.3s;
+}
+html.light .toggle-thumb{left:18px;background:#fff;}
+
+/* Light mode surface overrides */
+html.light .drop-card::before{background:radial-gradient(ellipse at 50% 0%,rgba(2,132,199,0.07) 0%,transparent 65%);}
+html.light .tbl tr:hover td{background:rgba(2,132,199,0.04);}
+html.light .drop-area:hover,html.light .drop-area.dragover{background:rgba(2,132,199,0.04);}
+
+/* ── SLOWEST TRANSACTIONS ── */
+.slow-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.slow-card{background:var(--s1);border:1px solid var(--border);padding:16px 18px;position:relative;overflow:hidden;transition:border-color 0.2s;}
+.slow-card:hover{border-color:var(--border2);}
+.slow-rank{font-family:'Fira Code',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.slow-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slow-metrics{display:flex;flex-direction:column;gap:5px;}
+.slow-metric-row{display:flex;align-items:center;gap:8px;}
+.slow-metric-name{font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);width:30px;text-transform:uppercase;}
+.slow-metric-track{flex:1;height:4px;background:var(--border);overflow:hidden;}
+.slow-metric-fill{height:100%;transition:width 0.6s ease;}
+.slow-metric-val{font-family:'Fira Code',monospace;font-size:11px;width:52px;text-align:right;}
+.slow-card-footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:12px;}
+.slow-foot-item{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);}
+.slow-foot-item span{font-weight:600;}
+
+/* ── HTTP STATUS BREAKDOWN ── */
+.status-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.status-donut-box{background:var(--s1);border:1px solid var(--border);padding:20px;display:flex;flex-direction:column;}
+.donut-wrap{display:flex;align-items:center;gap:28px;margin-top:12px;flex:1;}
+.donut-canvas-wrap{position:relative;flex-shrink:0;}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-total{font-family:'Fira Code',monospace;font-size:20px;font-weight:700;color:var(--text);line-height:1.1;word-break:break-all;text-align:center;max-width:88px;}
+.donut-sub{font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+.donut-right{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center;}
+.donut-legend{display:flex;flex-direction:column;gap:5px;}
+.donut-leg-item{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:var(--s2);}
+.donut-leg-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+.donut-leg-label{font-family:'Fira Code',monospace;font-size:11px;color:var(--text);font-weight:600;}
+.donut-leg-count{font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);}
+.donut-leg-pct{font-family:'Fira Code',monospace;font-size:12px;font-weight:700;min-width:46px;text-align:right;}
+.donut-summary{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.donut-stat{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;}
+.donut-stat+.donut-stat{border-left:1px solid var(--border);}
+.donut-stat-val{font-family:'Fira Code',monospace;font-size:14px;font-weight:700;line-height:1;}
+.donut-stat-lbl{font-family:'Fira Code',monospace;font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+.status-bars-box{background:var(--s1);border:1px solid var(--border);padding:18px;}
+.status-bar-list{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.status-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.status-bar-code{font-family:'Fira Code',monospace;font-size:12px;font-weight:700;}
+.status-bar-meta{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);}
+.status-bar-track{height:8px;background:var(--border);overflow:hidden;}
+.status-bar-fill{height:100%;transition:width 0.7s cubic-bezier(0.4,0,0.2,1);}
+
+/* ── PDF / PRINT STYLES ── */
+#pdfOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;align-items:center;justify-content:center;}
+#pdfOverlay.show{display:flex;}
+.pdf-modal{background:var(--s1);border:1px solid var(--border2);padding:32px 36px;width:420px;text-align:center;}
+.pdf-modal h3{font-size:16px;font-weight:800;color:var(--blue);margin-bottom:8px;letter-spacing:1px;}
+.pdf-modal p{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.pdf-options{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;text-align:left;}
+.pdf-opt-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;}
+.pdf-opt-row:hover{border-color:var(--blue);}
+.pdf-opt-row input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;}
+.pdf-opt-label{font-family:'Fira Code',monospace;font-size:11px;color:var(--text);}
+.pdf-opt-desc{font-family:'Fira Code',monospace;font-size:9px;color:var(--muted);margin-top:2px;}
+.pdf-btn-row{display:flex;gap:10px;}
+.pdf-btn{font-family:'Fira Code',monospace;font-size:12px;padding:10px 0;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:1px;flex:1;transition:all 0.2s;}
+.pdf-btn.primary{border-color:var(--blue);color:var(--blue);}
+.pdf-btn.primary:hover{background:var(--blue);color:var(--bg);}
+.pdf-btn:hover{border-color:var(--muted);color:var(--text);}
+.pdf-progress{display:none;font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);margin-top:12px;}
+.pdf-progress.show{display:block;}
+
+@media print {
+  /* ── Donut box: prevent cut, compact for PDF ── */
+  .status-donut-box { page-break-inside: avoid !important; overflow: visible !important; }
+  .status-row { page-break-inside: avoid !important; }
+  .donut-wrap { margin-top: 6px !important; gap: 16px !important; }
+  #donutChart { width: 120px !important; height: 120px !important; max-width: 120px !important; }
+  .donut-canvas-wrap { width: 120px !important; height: 120px !important; }
+  .donut-total { font-size: 14px !important; max-width: 60px !important; }
+  .donut-sub { font-size: 7px !important; }
+  .donut-right { gap: 6px !important; }
+  .donut-legend { gap: 3px !important; }
+  .donut-leg-item { padding: 4px 8px !important; background: transparent !important; border: 1px solid var(--border) !important; border-radius: 3px !important; gap: 7px !important; }
+  .donut-leg-label { font-size: 9px !important; }
+  .donut-leg-count { font-size: 9px !important; }
+  .donut-leg-pct { font-size: 10px !important; min-width: 36px !important; }
+  .donut-summary { border-radius: 3px !important; }
+  .donut-stat { padding: 5px 3px !important; }
+  .donut-stat-val { font-size: 11px !important; }
+  .donut-stat-lbl { font-size: 7px !important; }
+  /* ── Color preservation ── */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* ── Page setup ── */
+  @page { size: A4; margin: 10mm 12mm; }
+  html, body { background: white !important; }
+  main { background: var(--bg) !important; }
+
+  /* ── Hide non-print elements ── */
+  #columnBanner { display: none !important; }
+  #dropZone, #pdfOverlay, #logViewerModal, .no-print,
+  .header-right .hbtn, .header-right .theme-toggle { display: none !important; }
+  .header-right .file-tag { display: inline-block !important; }
+  header { position: relative !important; border-bottom: 1px solid #1c2a3a !important; padding: 6px 16px !important; }
+  .pagination { display: none !important; }
+  .table-search, .sort-btns { display: none !important; }
+  .chart-tooltip { display: none !important; }
+
+  /* ── Layout ── */
+  main { display: block !important; padding: 8px 12px !important; }
+  .summary-strip { display: grid !important; grid-template-columns: repeat(6,1fr) !important; gap: 1px !important; }
+  .charts-grid { display: grid !important; grid-template-columns: 2fr 1fr !important; gap: 1px !important; }
+  .bottom-grid { display: grid !important; gap: 1px !important; }
+  .status-row { display: grid !important; gap: 1px !important; }
+  .chart-box { border: 1px solid var(--border) !important; border-radius: 0 !important; padding: 8px !important; }
+  .slow-grid { grid-template-columns: repeat(3,1fr) !important; gap: 1px !important; }
+  /* Uniform 1px separator between every top-level section */
+  main > * + * { margin-top: 1px !important; }
+  /* Uniform thin border on every card/panel */
+  .sum-card        { border: 1px solid var(--border) !important; border-radius: 0 !important; }
+  .err-detail-panel { border: 1px solid var(--border) !important; border-radius: 0 !important; }
+  .table-box        { border: 1px solid var(--border) !important; border-radius: 0 !important; }
+  .slow-card        { border: 1px solid var(--border) !important; border-radius: 0 !important; }
+  /* Compact percentile cells so values don't overflow */
+  .perc-grid { gap: 4px !important; }
+  .perc-cell { padding: 6px 8px !important; min-width: 0 !important; }
+  .perc-val { font-size: 18px !important; white-space: nowrap !important; }
+  .perc-label { font-size: 7px !important; }
+  
+  .score-cell { padding: 7px 10px !important; }
+  .score-metric { font-size: 7px !important; letter-spacing: 0.5px !important; }
+  .score-value { font-size: 13px !important; }
+  .score-sub { font-size: 7.5px !important; }
+  .scorecard-grid { gap: 6px !important; }
+  .grade-row { padding: 7px 10px !important; margin-top: 6px !important; }
+  .grade-letter { font-size: 22px !important; }
+
+  /* ── Overflow: allow paginating inside error table ── */
+  .sum-card { padding: 6px 8px !important; min-width: 0 !important; overflow: hidden !important; }
+  .sum-value { font-size: 16px !important; font-weight: 700 !important; line-height: 1.1 !important; white-space: nowrap !important; }
+  .sum-label { font-size: 7px !important; letter-spacing: 1px !important; margin-bottom: 2px !important; }
+  .sum-sub   { font-size: 8px !important; margin-top: 2px !important; white-space: nowrap !important; }
+  .perc-cell, .perc-val, .perc-grid { overflow: visible !important; }
+  .chart-wrap { overflow: hidden !important; }
+  .density-wrap { overflow: hidden !important; }
+  .table-box { overflow: visible !important; }
+  #errDetailBody { overflow: visible !important; }
+  #errDetailBody > div { overflow: visible !important; }
+
+  /* ── Chart titles ── */
+  .chart-title { font-size: 9px !important; letter-spacing: 0.5px !important; flex-wrap: wrap !important; }
+  .chart-title-right { gap: 4px !important; flex-wrap: wrap !important; }
+  .leg { font-size: 7.5px !important; letter-spacing: 0 !important; white-space: nowrap !important; }
+  .leg-dot { width: 14px !important; height: 2px !important; border-radius: 1px !important; }
+
+  /* ── Canvas heights ── */
+  canvas { max-width: 100% !important; }
+  #respTimeChart, #errorChart { height: 100px !important; }
+  #tpsChart, #densityChart { height: 85px !important; }
+  #percBarChart { height: 55px !important; }
+
+  /* ── Per-request table ── */
+  .tbl { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }
+  .tbl th { font-size: 7px !important; padding: 3px 4px !important; white-space: normal !important; letter-spacing: 0 !important; word-break: break-word !important; line-height: 1.2 !important; font-family: monospace !important; }
+  .tbl td { font-size: 7.5px !important; padding: 3px 4px !important; white-space: normal !important; word-break: break-all !important; line-height: 1.2 !important; font-family: monospace !important; }
+  .tbl th:nth-child(1),  .tbl td:nth-child(1)  { width: 28% !important; }
+  .tbl th:nth-child(2),  .tbl td:nth-child(2)  { width: 7%  !important; }
+  .tbl th:nth-child(3),  .tbl td:nth-child(3)  { width: 8%  !important; }
+  .tbl th:nth-child(4),  .tbl td:nth-child(4)  { width: 6%  !important; }
+  .tbl th:nth-child(5),  .tbl td:nth-child(5)  { width: 6%  !important; }
+  .tbl th:nth-child(6),  .tbl td:nth-child(6)  { width: 7%  !important; }
+  .tbl th:nth-child(7),  .tbl td:nth-child(7)  { width: 7%  !important; }
+  .tbl th:nth-child(8),  .tbl td:nth-child(8)  { width: 6%  !important; }
+  .tbl th:nth-child(9),  .tbl td:nth-child(9)  { width: 7%  !important; }
+  .tbl th:nth-child(10), .tbl td:nth-child(10) { width: 7%  !important; }
+  .tbl th:nth-child(11), .tbl td:nth-child(11) { width: 11% !important; }
+  .resp-bar-track { display: none !important; }
+  .resp-bar { display: inline !important; }
+  .table-header { padding: 6px 8px !important; }
+
+  /* ── Page breaks ── */
+  .table-box  { page-break-before: always; }
+  .status-row { page-break-before: always; }
+  .slow-grid  { page-break-inside: avoid; }
+  .bottom-grid { page-break-inside: avoid; }
+  .chart-box  { page-break-inside: avoid; }
+  .err-detail-header { page-break-after: avoid; }
+  .err-summary-tbl tr { page-break-inside: avoid; }
+
+  /* ── Font safety (PDF CJK fallback) ── */
+  .chart-title, .perc-label, .tbl th, .tbl td {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  /* ── Misc ── */
+  .print-timestamp { display: block !important; }
+  /* Hide count badge in print — raw number already in cell */
+  .eds-count-badge { display: none !important; }
+  /* Hide action buttons in error table — waste of space */
+  .err-expand-btn, .eds-export-btn { display: none !important; }
+  /* Hide filter bar (search + ALL/5xx/4xx buttons) — not useful in PDF */
+  .err-filter-row { display: none !important; }
+  /* Error table layout fixes — auto table-layout so Code col sizes to content */
+  .err-summary-tbl { width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
+  .err-summary-tbl th, .err-summary-tbl td { font-size: 9px !important; padding: 4px 6px !important; word-break: break-word !important; overflow: visible !important; vertical-align: top !important; }
+  /* Col 1 — Code: no fixed width, wraps naturally to fit content */
+  .err-summary-tbl th:nth-child(1), .err-summary-tbl td:nth-child(1) { white-space: normal !important; word-break: break-word !important; min-width: 48px !important; max-width: 120px !important; }
+  /* Col 2 — Endpoint: takes remaining space */
+  .err-summary-tbl th:nth-child(2), .err-summary-tbl td:nth-child(2) { white-space: normal !important; word-break: break-all !important; }
+  /* Col 3 — Count */
+  .err-summary-tbl th:nth-child(3), .err-summary-tbl td:nth-child(3) { white-space: nowrap !important; text-align: right !important; width: 48px !important; }
+  /* Col 4 — % of Errors */
+  .err-summary-tbl th:nth-child(4), .err-summary-tbl td:nth-child(4) { white-space: nowrap !important; width: 90px !important; }
+  /* Col 5 — Avg Time */
+  .err-summary-tbl th:nth-child(5), .err-summary-tbl td:nth-child(5) { white-space: nowrap !important; width: 56px !important; }
+  /* Col 6 — Actions: hidden in print */
+  .err-summary-tbl th:nth-child(6), .err-summary-tbl td:nth-child(6) { display: none !important; }
+  /* Hide pct bar track in print — just show the % number */
+  .err-pct-track { display: none !important; }
+}
+.print-timestamp {
+  display: none;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-align: right;
+  padding: 4px 24px;
+}
+
+/* ── RUN TIMELINE BANNER ── */
+.run-timeline {
+  background:var(--s1); border:1px solid var(--border);
+  padding:14px 20px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; flex-wrap:wrap;
+}
+.run-timeline-block {
+  display:flex; flex-direction:column; gap:3px;
+}
+.rtl-label {
+  font-family:'Fira Code',monospace; font-size:9px;
+  letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+}
+.rtl-value {
+  font-family:'Fira Code',monospace; font-size:14px; font-weight:500;
+  color:var(--text);
+}
+.rtl-value .rtl-date {
+  font-size:10px; color:var(--muted); margin-left:6px; font-weight:400;
+}
+.service-name-tag {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:'Fira Code','Courier New',monospace;
+  font-size:10px; font-weight:700; letter-spacing:1.8px;
+  text-transform:uppercase;
+  color:#fff;
+  background:linear-gradient(135deg, var(--blue) 0%, #0ea5e9 100%);
+  border:none;
+  border-radius:4px;
+  padding:3px 10px;
+  margin-left:12px;
+  vertical-align:middle;
+  white-space:nowrap;
+  box-shadow:0 1px 6px rgba(56,182,255,0.35);
+}
+.service-name-tag::before {
+  content:'';
+  display:inline-block;
+  width:6px; height:6px;
+  border-radius:50%;
+  background:#fff;
+  opacity:0.75;
+  flex-shrink:0;
+}
+.log-prog-track {
+  width:100%; height:4px; background:var(--border);
+  border-radius:2px; overflow:hidden;
+}
+.log-prog-bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg, var(--blue), #0ea5e9);
+  border-radius:2px;
+  transition:width 0.15s ease;
+}
+.light .service-name-tag {
+  color:#fff;
+  background:linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+  box-shadow:0 1px 6px rgba(2,132,199,0.30);
+}
+.run-timeline-divider {
+  width:1px; height:36px; background:var(--border); flex-shrink:0;
+}
+.run-timeline-bar {
+  flex:1; min-width:160px; display:flex; flex-direction:column; gap:5px;
+}
+.rtl-bar-track {
+  height:6px; background:var(--border); position:relative; overflow:hidden; border-radius:3px; cursor:default;
+}
+.rtl-tick {
+  position:absolute; top:0; height:100%;
+  background:var(--red); pointer-events:none;
+}
+.rtl-bar-fill {
+  height:100%;
+  width:0%;
+  animation: bar-slide 1s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+@keyframes bar-slide {
+  from { width:0%; }
+  to   { width:100%; }
+}
+.rtl-bar-labels {
+  display:flex; justify-content:space-between;
+  font-family:'Fira Code',monospace; font-size:9px; color:var(--muted);
+}
+.rtl-duration-pill {
+  font-family:'Fira Code',monospace; font-size:11px;
+  background:rgba(56,182,255,0.1); border:1px solid rgba(56,182,255,0.25);
+  color:var(--blue); padding:3px 10px; white-space:nowrap; align-self:center;
+}
+
+/* ── CHART TOOLTIP ── */
+.chart-wrap { position: relative; overflow: hidden; width: 100%; }
+.chart-tooltip {
+  position: absolute;
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  padding: 10px 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 200;
+  min-width: 150px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.chart-tooltip.visible { opacity: 1; }
+.ct-time {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 1px;
+}
+.ct-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+.ct-row:last-child { margin-bottom: 0; }
+.ct-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.ct-label {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  flex: 1;
+}
+.ct-val {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── DENSITY CURVE CHART ── */
+.density-wrap { position: relative; overflow: hidden; width: 100%; }
+
+
+
+.density-leg-line.dashed {
+  background: repeating-linear-gradient(90deg, var(--muted) 0px, var(--muted) 3px, transparent 3px, transparent 6px);
+}
+
+/* ── ERROR DETAIL PANEL ── */
+.err-detail-panel {
+  background: var(--s1); border: 1px solid var(--border);
+  padding: 0; overflow: hidden;
+}
+.err-detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  background: var(--s2);
+}
+.err-detail-title {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.err-badge {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  background: rgba(255,69,96,0.12); color: var(--red);
+  border: 1px solid rgba(255,69,96,0.3); padding: 2px 8px;
+}
+.err-filter-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.err-search {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 11px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 10px; width: 200px; outline: none;
+}
+.err-search:focus { border-color: var(--red); }
+.err-filter-btn {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  padding: 5px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  letter-spacing: 1px; transition: all 0.15s;
+}
+.err-filter-btn:hover, .err-filter-btn.active {
+  border-color: var(--red); color: var(--red);
+}
+
+/* Summary table */
+.err-summary-tbl { width: 100%; border-collapse: collapse; }
+.err-summary-tbl th {
+  background: var(--s2); font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); padding: 8px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.err-summary-tbl td {
+  padding: 9px 14px; font-size: 11px; border-bottom: 1px solid var(--border);
+  font-family: 'Fira Code', 'Courier New', monospace; vertical-align: middle;
+}
+.err-summary-tbl tr:last-child td { border-bottom: none; }
+.err-summary-tbl tr:hover td { background: rgba(255,69,96,0.03); }
+.err-expand-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 10px; padding: 3px 8px; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.err-expand-btn:hover { border-color: var(--red); color: var(--red); }
+.err-pct-bar {
+  display: flex; align-items: center; gap: 8px;
+}
+.err-pct-track {
+  width: 60px; height: 4px; background: var(--border); overflow: hidden;
+}
+.err-pct-fill { height: 100%; background: var(--red); }
+
+/* Detail panel (expands inline) */
+.err-detail-row { display: none; }
+.err-detail-row.open { display: table-row; }
+.err-detail-cell {
+  padding: 0 !important; border-bottom: 2px solid var(--red) !important;
+}
+.err-detail-inner {
+  background: var(--bg); padding: 16px 18px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.err-detail-section { display: flex; flex-direction: column; gap: 6px; }
+.eds-label {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px;
+}
+.eds-samples {
+  max-height: 180px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.eds-sample {
+  background: var(--s1); border: 1px solid var(--border);
+  border-left: 2px solid var(--red);
+  padding: 8px 10px; font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.eds-sample:hover { border-color: var(--red); }
+.eds-sample-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.eds-sample-time { color: var(--muted); }
+.eds-sample-code {
+  padding: 1px 6px; font-size: 9px;
+  background: rgba(255,69,96,0.1); color: var(--red);
+  border: 1px solid rgba(255,69,96,0.2);
+}
+.eds-sample-elapsed { color: var(--yellow); }
+.eds-msg { color: var(--text); line-height: 1.4; word-break: break-word; }
+.eds-trace {
+  font-size: 9px; color: var(--muted); margin-top: 3px;
+  word-break: break-all;
+}
+.eds-copy {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 11px; cursor: pointer; padding: 0 4px;
+}
+.eds-copy:hover { color: var(--blue); }
+
+/* Full detail JSON view */
+.eds-json {
+  background: var(--s1); border: 1px solid var(--border);
+  padding: 10px 12px; font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 10px; line-height: 1.6; color: var(--text);
+  max-height: 200px; overflow-y: auto; white-space: pre-wrap;
+  word-break: break-all;
+}
+.eds-note {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 9px;
+  color: var(--muted); line-height: 1.5; padding: 8px 10px;
+  background: var(--s2); border: 1px solid var(--border);
+}
+.no-errors-msg {
+  padding: 28px; text-align: center;
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 12px; color: var(--green);
+}
+
+/* ── SAMPLE VIEWER PAGINATION ── */
+.eds-pager {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 0; margin-top: 6px; flex-wrap: wrap;
+}
+.eds-pager-btn {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  padding: 3px 9px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.eds-pager-btn:hover, .eds-pager-btn.active {
+  border-color: var(--red); color: var(--red);
+}
+.eds-pager-info {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  color: var(--muted); margin-left: auto;
+}
+.eds-export-btn {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  padding: 4px 11px; border: 1px solid var(--border2);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.15s; margin-left: 6px;
+}
+.eds-export-btn:hover { border-color: var(--green); color: var(--green); }
+.eds-count-badge {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  background: rgba(255,69,96,0.1); color: var(--red);
+  border: 1px solid rgba(255,69,96,0.25); padding: 2px 7px;
+  margin-left: 6px;
+}
+
+.eds-headers {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 9px;
+  color: var(--blue); background: rgba(56,182,255,0.05);
+  border-left: 2px solid rgba(56,182,255,0.3);
+  padding: 5px 8px; margin: 4px 0; line-height: 1.6;
+  word-break: break-all;
+}
+
+/* ── REQUEST LOG VIEWER ── */
+#logViewerOverlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88); z-index: 8000;
+  align-items: flex-start; justify-content: center;
+  padding: 24px; overflow-y: auto;
+}
+#logViewerOverlay.show { display: flex; }
+.log-viewer-modal {
+  background: var(--bg); border: 1px solid var(--border2);
+  width: 100%; max-width: 1300px;
+  display: flex; flex-direction: column; gap: 0;
+}
+.log-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; background: var(--s1);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.log-modal-title {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+}
+.log-modal-badge {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  background: rgba(56,182,255,0.12); color: var(--blue);
+  border: 1px solid rgba(56,182,255,0.25); padding: 2px 8px;
+}
+.log-close-btn {
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted); font-size: 14px; cursor: pointer;
+  padding: 4px 10px; font-family: 'Fira Code', 'Courier New', monospace;
+  transition: all 0.15s;
+}
+.log-close-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* Drop zone inside modal */
+.log-drop-zone {
+  border: 1.5px dashed var(--border2); padding: 40px;
+  text-align: center; cursor: pointer; position: relative;
+  margin: 20px; transition: all 0.2s;
+}
+.log-drop-zone:hover, .log-drop-zone.dragover {
+  border-color: var(--blue); background: rgba(56,182,255,0.03);
+}
+.log-drop-zone input {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.log-drop-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
+.log-drop-text {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 12px; color: var(--muted);
+}
+.log-drop-text span { color: var(--blue); }
+.log-drop-hint {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  color: var(--muted); margin-top: 12px; line-height: 1.7;
+}
+
+/* Toolbar */
+.log-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--s2);
+}
+.log-search {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 11px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 12px; width: 220px; outline: none;
+}
+.log-search:focus { border-color: var(--blue); }
+.log-filter-btn {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  padding: 5px 11px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  letter-spacing: 1px; transition: all 0.15s; white-space: nowrap;
+}
+.log-filter-btn:hover { border-color: var(--blue); color: var(--blue); }
+.log-filter-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(56,182,255,0.08); }
+.log-filter-btn.err { border-color: var(--red); color: var(--red); }
+.log-filter-btn.err.active { background: rgba(255,69,96,0.08); }
+.log-toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.log-count-info {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px; color: var(--muted);
+  margin-left: auto;
+}
+
+/* Stats bar */
+.log-stats-bar {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.log-stat {
+  padding: 10px 16px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.log-stat:last-child { border-right: none; }
+.log-stat-label {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 9px;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+}
+.log-stat-val {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 15px; font-weight: 700;
+}
+
+/* Table */
+.log-table-wrap { overflow-x: auto; flex: 1; max-height: 55vh; overflow-y: auto; }
+.log-tbl { width: 100%; border-collapse: collapse; min-width: 900px; }
+.log-tbl th {
+  background: var(--s2); font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); padding: 9px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 2; cursor: pointer; white-space: nowrap;
+}
+.log-tbl th:hover { color: var(--blue); }
+.log-tbl th.sorted { color: var(--blue); }
+.log-tbl td {
+  padding: 8px 14px; font-size: 11px; border-bottom: 1px solid var(--border);
+  font-family: 'Fira Code', 'Courier New', monospace; vertical-align: top;
+  max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.log-tbl td.wrap { white-space: normal; word-break: break-word; max-width: 320px; }
+.log-tbl tr:hover td { background: rgba(56,182,255,0.03); cursor: pointer; }
+.log-tbl tr.selected td { background: rgba(56,182,255,0.08) !important; }
+.log-tbl tr.err-row td { border-left: 2px solid var(--red); }
+.log-code-pill {
+  padding: 2px 7px; font-size: 10px; font-weight: 700;
+  display: inline-block; border-radius: 0;
+}
+.log-code-2xx { background: rgba(0,217,126,0.1); color: var(--green); border: 1px solid rgba(0,217,126,0.2); }
+.log-code-3xx { background: rgba(56,182,255,0.1); color: var(--blue);  border: 1px solid rgba(56,182,255,0.2); }
+.log-code-4xx { background: rgba(255,209,102,0.1);color: var(--yellow);border: 1px solid rgba(255,209,102,0.2); }
+.log-code-5xx { background: rgba(255,69,96,0.1);  color: var(--red);   border: 1px solid rgba(255,69,96,0.2); }
+
+/* Detail drawer (slides in from right) */
+.log-detail-drawer {
+  display: none; border-top: 1px solid var(--border);
+  background: var(--bg); padding: 18px 20px;
+}
+.log-detail-drawer.open { display: block; }
+.log-detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
+}
+.log-detail-section { display: flex; flex-direction: column; gap: 6px; }
+.lds-title {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); padding-bottom: 6px;
+  border-bottom: 1px solid var(--border); margin-bottom: 4px;
+}
+.lds-row {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 11px;
+}
+.lds-key { color: var(--muted); flex-shrink: 0; width: 110px; }
+.lds-val { color: var(--text); word-break: break-all; flex: 1; }
+.lds-val.ok    { color: var(--green); }
+.lds-val.warn  { color: var(--yellow); }
+.lds-val.err   { color: var(--red); }
+.lds-val.code  { color: var(--blue); }
+.log-msg-box {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  background: var(--s1); border: 1px solid var(--border);
+  border-left: 2px solid var(--red); padding: 10px 12px;
+  line-height: 1.6; word-break: break-word; white-space: pre-wrap;
+  max-height: 120px; overflow-y: auto; color: var(--text);
+}
+.log-req-box {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  background: var(--s1); border: 1px solid var(--border);
+  border-left: 2px solid var(--blue); padding: 10px 12px;
+  line-height: 1.6; word-break: break-word; white-space: pre-wrap;
+  max-height: 120px; overflow-y: auto; color: var(--text);
+}
+
+/* Pagination */
+.log-pager {
+  display: flex; align-items: center; gap: 6px; padding: 10px 20px;
+  border-top: 1px solid var(--border); background: var(--s1); flex-wrap: wrap;
+}
+.log-pager-btn {
+  font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px;
+  padding: 4px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.log-pager-btn:hover, .log-pager-btn.active { border-color: var(--blue); color: var(--blue); }
+.log-pager-btn:disabled { opacity: 0.3; cursor: default; }
+.log-pager-info { font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px; color: var(--muted); margin-left: auto; }
+
+/* ── PROGRESS OVERLAY ── */
+#progressOverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(7,9,13,0.88);z-index:9999;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;
+}
+#progressOverlay.active{display:flex;}
+.prog-label{font-family:'Fira Code',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;}
+.prog-track{width:300px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.prog-fill {height:100%;background:var(--blue);border-radius:2px;transition:width 0.15s ease;width:0%;}
+.prog-pct  {font-family:'Fira Code',monospace;font-size:10px;color:var(--blue);}
+
+/* ── TEST HEALTH SCORECARD ── */
+.scorecard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.score-cell {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+  overflow: hidden;
+}
+.score-cell::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.score-cell.sc-good::before { background: var(--green); }
+.score-cell.sc-warn::before { background: var(--yellow); }
+.score-cell.sc-fail::before { background: var(--red); }
+.score-metric {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.score-value {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+.sc-good .score-value { color: var(--green); }
+.sc-warn .score-value { color: var(--yellow); }
+.sc-fail .score-value { color: var(--red); }
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  align-self: flex-start;
+}
+.sc-good .score-badge { background: rgba(0,217,126,0.12);  color: var(--green); }
+.sc-warn .score-badge { background: rgba(255,209,102,0.12); color: var(--yellow); }
+.sc-fail .score-badge { background: rgba(255,69,96,0.12);   color: var(--red); }
+.score-sub {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.grade-row {
+  margin-top: 9px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.grade-letter {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  width: 28px;
+  text-align: center;
+}
+.grade-label {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.grade-desc { font-size: 10px; color: var(--text); }
+.grade-dots { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+.grade-dot  { width: 7px; height: 7px; border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<!-- DROP ZONE -->
+<div id="dropZone">
+  <div class="drop-card">
+    <div class="drop-icon">📊</div>
+    <h2>JMeter Results Dashboard</h2>
+    <p>Upload your JMeter results file to instantly visualize response times,<br>throughput, error rates, and per-request breakdowns.</p>
+
+    <div class="drop-area" id="dropArea">
+      <input type="file" id="fileInput" accept=".jtl,.csv,.tsv,.xml" onchange="handleFileInput(this.files)">
+      <div class="drop-area-text">
+        Drop your <span>.jtl</span> or <span>.csv</span> file here<br>
+        <span style="font-size:11px;color:var(--muted2);margin-top:4px;display:block">or click to browse</span>
+      </div>
+    </div>
+
+    <div class="or-divider">— OR —</div>
+    <button class="btn-demo-load" onclick="loadDemoData()">▶ &nbsp; Load Demo Results (no file needed)</button>
+
+    <div class="format-hint">
+      <strong style="color:var(--muted)">Supported formats:</strong><br>
+      • JMeter CSV/JTL with columns: timeStamp, elapsed, label, responseCode, success, bytes, sentBytes, Latency, Connect<br>
+      • Standard JMeter "Save Results" output (comma or tab separated)<br>
+      • Enable via: JMeter → Listeners → "Simple Data Writer" or "View Results in Table"
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header id="mainHeader" style="display:none">
+  <div class="brand">
+    <div class="brand-icon"><span>JM</span></div>
+    <div>
+      <h1>JMeter Results<span id="serviceNameTag" class="service-name-tag" style="display:none"></span></h1>
+      <p id="fileNameTag" style="display:none">no file loaded</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="file-tag" id="sampleCount">0 samples</div>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Toggle light/dark mode">
+      <span id="themeIcon">☀️</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      <span id="themeLabel">LIGHT</span>
+    </button>
+    <button class="hbtn" style="border-color:var(--purple);color:var(--purple)" onclick="showLogViewer()">📋 Request Log</button>
+    <button class="hbtn primary" onclick="showDropZone()">↑ Load New File</button>
+    <button class="hbtn" onclick="exportSummary()">⬇ Export CSV</button>
+    <button class="hbtn" style="border-color:var(--orange);color:var(--orange)" onclick="showPdfModal()">&#8595; Export PDF</button>
+    <button class="hbtn" id="screenshotBtn" style="border-color:var(--green);color:var(--green)" onclick="captureScreenshot()">&#128247; Screenshot</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="mainDash" style="display:none">
+
+
+  <!-- Run Timeline Banner -->
+  <div class="run-timeline" id="runTimeline">
+    <div class="run-timeline-block">
+      <div class="rtl-label">▶ Start Time</div>
+      <div class="rtl-value" id="rtlStart">—</div>
+    </div>
+    <div class="run-timeline-divider"></div>
+    <div class="run-timeline-bar">
+      <div class="rtl-bar-track" id="rtlBarTrack"><div class="rtl-bar-fill" id="rtlBarFill"></div></div>
+      <div class="rtl-bar-labels">
+        <span id="rtlBarStart">—</span>
+        <span id="rtlBarDuration" class="rtl-duration-pill">—</span>
+        <span id="rtlBarEnd">—</span>
+      </div>
+    </div>
+    <div class="run-timeline-divider"></div>
+    <div class="run-timeline-block">
+      <div class="rtl-label">⏹ End Time</div>
+      <div class="rtl-value" id="rtlEnd">—</div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-strip">
+    <div class="sum-card" data-icon="📨">
+      <div class="sum-label">Total Samples</div>
+      <div class="sum-value" id="sTotalSamples" style="color:var(--blue)">—</div>
+      <div class="sum-sub" id="sDuration">duration —</div>
+    </div>
+    <div class="sum-card" data-icon="⚡">
+      <div class="sum-label">Avg Response</div>
+      <div class="sum-value" id="sAvgResp" style="color:var(--yellow)">—</div>
+      <div class="sum-sub" id="sMedian">median —</div>
+    </div>
+    <div class="sum-card" data-icon="🚀">
+      <div class="sum-label">Throughput</div>
+      <div class="sum-value" id="sThroughput" style="color:var(--green)">—</div>
+      <div class="sum-sub">req/sec</div>
+    </div>
+    <div class="sum-card" data-icon="❌">
+      <div class="sum-label">Error Rate</div>
+      <div class="sum-value" id="sErrorRate" style="color:var(--red)">—</div>
+      <div class="sum-sub" id="sErrorCount">0 errors</div>
+    </div>
+    <div class="sum-card" data-icon="📦">
+      <div class="sum-label">Avg Bytes</div>
+      <div class="sum-value" id="sAvgBytes" style="color:var(--purple)">—</div>
+      <div class="sum-sub">per response</div>
+    </div>
+    <div class="sum-card" data-icon="🔗">
+      <div class="sum-label">P90 Response</div>
+      <div class="sum-value" id="sP90" style="color:var(--orange)">—</div>
+      <div class="sum-sub" id="sP99">p99 —</div>
+    </div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="charts-grid">
+    <div class="chart-box">
+      <div class="chart-title">
+        Response Time Over Test Duration
+        <div class="chart-title-right">
+          <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>Avg</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>P95</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Min</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="respTimeChart" height="150"></canvas>
+        <div class="chart-tooltip" id="respTimeTooltip"></div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Error Rate Over Time</div>
+      <div class="chart-wrap"><canvas id="errorChart" height="150"></canvas>
+        <div class="chart-tooltip" id="errorTooltip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="charts-grid">
+    <div class="chart-box">
+      <div class="chart-title">
+        Throughput (req/s) Over Time
+        <div class="chart-title-right">
+          <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>req/s</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="tpsChart" height="130"></canvas>
+        <div class="chart-tooltip" id="tpsTooltip"></div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">
+        Response Time Density
+        <div class="chart-title-right">
+          <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>Density</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--yellow);height:1px;width:10px;border-top:1.5px dashed"></div>P50</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--orange);height:1px;width:10px;border-top:1.5px dashed"></div>P90</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--red);height:1px;width:10px;border-top:1.5px dashed"></div>P99</div>
+        </div>
+      </div>
+      <div class="density-wrap">
+        <canvas id="densityChart" height="130"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Percentiles + Health Scorecard -->
+  <div class="bottom-grid">
+    <div class="chart-box">
+      <div class="chart-title">Response Time Percentiles</div>
+      <div class="perc-grid">
+        <div class="perc-cell"><div class="perc-label">P50</div><div class="perc-val" id="p50" style="color:var(--green)">—</div></div>
+        <div class="perc-cell"><div class="perc-label">P75</div><div class="perc-val" id="p75" style="color:var(--yellow)">—</div></div>
+        <div class="perc-cell"><div class="perc-label">P90</div><div class="perc-val" id="p90" style="color:var(--orange)">—</div></div>
+        <div class="perc-cell"><div class="perc-label">P99</div><div class="perc-val" id="p99" style="color:var(--red)">—</div></div>
+      </div>
+      <div style="margin-top:14px">
+        <canvas id="percBarChart" height="80"></canvas>
+      </div>
+    </div>
+
+    <!-- Health Scorecard -->
+    <div class="chart-box">
+      <div class="chart-title">Test Health Scorecard</div>
+      <div class="scorecard-grid" id="scorecardGrid">
+        <div class="score-cell" id="sc-avg">
+          <div class="score-metric">Avg Response</div>
+          <div class="score-value" id="scValAvg">—</div>
+          <div class="score-badge" id="scBadgeAvg">—</div>
+          <div class="score-sub" id="scSubAvg">threshold &lt; 500ms</div>
+        </div>
+        <div class="score-cell" id="sc-err">
+          <div class="score-metric">Error Rate</div>
+          <div class="score-value" id="scValErr">—</div>
+          <div class="score-badge" id="scBadgeErr">—</div>
+          <div class="score-sub" id="scSubErr">threshold &lt; 1%</div>
+        </div>
+        <div class="score-cell" id="sc-p99">
+          <div class="score-metric">P99 Response</div>
+          <div class="score-value" id="scValP99">—</div>
+          <div class="score-badge" id="scBadgeP99">—</div>
+          <div class="score-sub" id="scSubP99">threshold &lt; 2s</div>
+        </div>
+        <div class="score-cell" id="sc-tps">
+          <div class="score-metric">Throughput</div>
+          <div class="score-value" id="scValTps">—</div>
+          <div class="score-badge" id="scBadgeTps">—</div>
+          <div class="score-sub">sustained req/s</div>
+        </div>
+        <div class="score-cell" id="sc-spread">
+          <div class="score-metric">P90 / P50</div>
+          <div class="score-value" id="scValSpread">—</div>
+          <div class="score-badge" id="scBadgeSpread">—</div>
+          <div class="score-sub" id="scSubSpread">tail spread ratio</div>
+        </div>
+        <div class="score-cell" id="sc-slow">
+          <div class="score-metric">Slow Requests</div>
+          <div class="score-value" id="scValSlow">—</div>
+          <div class="score-badge" id="scBadgeSlow">—</div>
+          <div class="score-sub">&gt; 2s response time</div>
+        </div>
+      </div>
+      <div class="grade-row" id="gradeRow">
+        <div class="grade-letter" id="gradeLetter">—</div>
+        <div>
+          <div class="grade-label">Overall Grade</div>
+          <div class="grade-desc" id="gradeDesc">Load data to see results</div>
+        </div>
+        <div class="grade-dots" id="gradeDots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Detail Panel (full width) -->
+  <div class="err-detail-panel">
+    <div class="err-detail-header">
+      <div class="err-detail-title">
+        ⚠ Error Analysis
+        <span class="err-badge" id="errTotalBadge">0 errors</span>
+      </div>
+      <div class="err-filter-row">
+        <input class="err-search" id="errSearch" placeholder="filter by endpoint / code…" oninput="filterErrors()">
+        <button class="err-filter-btn active" onclick="setErrFilter('all',this)">ALL</button>
+        <button class="err-filter-btn" onclick="setErrFilter('5xx',this)">5xx</button>
+        <button class="err-filter-btn" onclick="setErrFilter('4xx',this)">4xx</button>
+        <button class="err-filter-btn" onclick="setErrFilter('other',this)">OTHER</button>
+      </div>
+    </div>
+    <div id="errDetailBody">
+      <div class="no-errors-msg">✓ No errors found in this test run</div>
+    </div>
+  </div>
+
+  </div>
+
+  <!-- Per-request breakdown table -->
+  <div class="table-box">
+    <div class="table-header">
+      <div class="chart-title" style="margin:0">Per Request Breakdown</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="table-search" id="tableSearch" placeholder="filter by label…" oninput="filterTable()">
+        <div class="sort-btns">
+          <button class="sort-btn active" onclick="sortTable('label',this)">NAME</button>
+          <button class="sort-btn" onclick="sortTable('avg',this)">AVG</button>
+          <button class="sort-btn" onclick="sortTable('err',this)">ERR%</button>
+          <button class="sort-btn" onclick="sortTable('count',this)">COUNT</button>
+        </div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="breakdownTable">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th># Samples</th>
+            <th>Avg (ms)</th>
+            <th>Min (ms)</th>
+            <th>Max (ms)</th>
+            <th>P90 (ms)</th>
+            <th>Std Dev</th>
+            <th>Error %</th>
+            <th>Throughput</th>
+            <th>Avg Bytes</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+
+  <!-- Slowest Transactions -->
+  <div class="chart-box" style="padding:18px;">
+    <div class="chart-title" style="margin-bottom:14px;">
+      🐢 Top 6 Slowest Transactions — by P95 Response Time
+      <span style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace;font-weight:400;letter-spacing:1px;">ranked worst first</span>
+    </div>
+    <div class="slow-grid" id="slowGrid"></div>
+  </div>
+
+  <!-- HTTP Status Breakdown -->
+  <div class="status-row">
+    <div class="status-donut-box">
+      <div class="chart-title" style="margin-bottom:0">HTTP Status Code Distribution</div>
+      <div class="donut-wrap">
+        <div class="donut-canvas-wrap">
+          <canvas id="donutChart" width="180" height="180"></canvas>
+          <div class="donut-center">
+            <div class="donut-total" id="donutTotal">—</div>
+            <div class="donut-sub">TOTAL</div>
+          </div>
+        </div>
+        <div class="donut-right">
+          <div class="donut-legend" id="donutLegend"></div>
+          <div class="donut-summary" id="donutSummary"></div>
+        </div>
+      </div>
+    </div>
+    <div class="status-bars-box">
+      <div class="chart-title" style="margin-bottom:0">Response Code Breakdown</div>
+      <div class="status-bar-list" id="statusBarList"></div>
+    </div>
+  </div>
+
+
+  <!-- Print timestamp (shows only in PDF) -->
+  <div class="print-timestamp" id="printTimestamp"></div>
+
+</main>
+
+<!-- PDF Export Modal -->
+<div id="pdfOverlay">
+  <div class="pdf-modal">
+    <h3>📄 EXPORT AS PDF</h3>
+    <p>Choose what to include in the PDF export. The dashboard will print with full dark/light theme styles preserved.</p>
+    <div class="pdf-options">
+      <label class="pdf-opt-row">
+        <input type="checkbox" id="pdfOptSummary" checked>
+        <div>
+          <div class="pdf-opt-label">Summary KPIs</div>
+          <div class="pdf-opt-desc">Total samples, avg response, throughput, error rate</div>
+        </div>
+      </label>
+      <label class="pdf-opt-row">
+        <input type="checkbox" id="pdfOptCharts" checked>
+        <div>
+          <div class="pdf-opt-label">Charts &amp; Graphs</div>
+          <div class="pdf-opt-desc">Response time, error rate, throughput, distribution</div>
+        </div>
+      </label>
+      <label class="pdf-opt-row">
+        <input type="checkbox" id="pdfOptSlowest" checked>
+        <div>
+          <div class="pdf-opt-label">Slowest Transactions</div>
+          <div class="pdf-opt-desc">Top 6 slowest endpoints ranked by P90</div>
+        </div>
+      </label>
+      <label class="pdf-opt-row">
+        <input type="checkbox" id="pdfOptStatus" checked>
+        <div>
+          <div class="pdf-opt-label">HTTP Status Breakdown</div>
+          <div class="pdf-opt-desc">Donut chart + per-code bar breakdown</div>
+        </div>
+      </label>
+      <label class="pdf-opt-row">
+        <input type="checkbox" id="pdfOptTable" checked>
+        <div>
+          <div class="pdf-opt-label">Per-Request Breakdown Table</div>
+          <div class="pdf-opt-desc">All endpoints with full stats (all pages)</div>
+        </div>
+      </label>
+    </div>
+    <div class="pdf-btn-row">
+      <button class="pdf-btn" onclick="closePdfModal()">CANCEL</button>
+      <button class="pdf-btn primary" onclick="executePdfExport()">⬇ PRINT / SAVE PDF</button>
+    </div>
+    <div class="pdf-progress" id="pdfProgress">Preparing PDF… please wait</div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let allRows = [];
+let filteredRows = [];
+let labelStats = [];
+let sortKey = 'label';
+let sortDir = 1;
+let page = 0;
+const PER_PAGE = 15;
+
+// ─── File Handling ────────────────────────────────────────────────────────────
+const dropArea = document.getElementById('dropArea');
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault(); dropArea.classList.remove('dragover');
+  handleFileInput(e.dataTransfer.files);
+});
+
+function setServiceName(filename) {
+  const name = filename.replace(/\.(jtl|csv|tsv|xml)$/i, '').replace(/[-_]+/g, ' ').trim();
+  const tag = document.getElementById('serviceNameTag');
+  if (tag && name) { tag.textContent = name; tag.style.display = 'inline-flex'; }
+}
+
+function handleFileInput(files) {
+  const arr = Array.from(files);
+  const jtl = arr.find(f => /\.(jtl|csv|tsv|xml)$/i.test(f.name));
+  const target = jtl || arr[0];
+  if (target) setServiceName(target.name);
+  handleFile(target);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const MB = file.size / 1048576;
+  // ≤ 80 MB: classic readAsText — simple and fast
+  if (MB <= 80) {
+    const reader = new FileReader();
+    reader.onload = e => parseJTL(e.target.result, file.name);
+    reader.readAsText(file);
+    return;
+  }
+  // > 80 MB: stream 32 MB binary chunks — never holds full file in RAM
+  showProgress(1, 'Opening ' + MB.toFixed(0) + ' MB file\u2026');
+  streamParseJTL(file);
+}
+
+function showDropZone() {
+  document.getElementById('dropZone').style.display = 'flex';
+  document.getElementById('mainHeader').style.display = 'none';
+  document.getElementById('mainDash').style.display = 'none';
+}
+
+// ─── Parse JTL/CSV ────────────────────────────────────────────────────────────
+// Extracts trace IDs from response headers string (supports multiple formats)
+function extractTraceId(headers) {
+  if (!headers) return null;
+  const patterns = [
+    /x-trace-id:\s*([^\r\n,]+)/i,
+    /x-request-id:\s*([^\r\n,]+)/i,
+    /x-b3-traceid:\s*([^\r\n,]+)/i,
+    /traceparent:\s*[0-9a-f]{2}-([0-9a-f]{32})/i,
+    /x-amzn-trace-id:\s*([^\r\n,]+)/i,
+    /x-cloud-trace-context:\s*([^/\r\n,]+)/i,
+  ];
+  for (const p of patterns) {
+    const m = headers.match(p);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
+// ── Progress overlay helpers ─────────────────────────────────────────────────
+function showProgress(pct, label) {
+  const ov = document.getElementById('progressOverlay');
+  if (ov) ov.classList.add('active');
+  updateProgress(pct, label);
+}
+function updateProgress(pct, label) {
+  const fill  = document.getElementById('progFill');
+  const lbl   = document.getElementById('progLabel');
+  const pctEl = document.getElementById('progPct');
+  if (fill)  fill.style.width   = Math.min(100, pct) + '%';
+  if (lbl)   lbl.textContent    = label || '';
+  if (pctEl) pctEl.textContent  = Math.round(pct) + '%';
+}
+function hideProgress() {
+  const ov = document.getElementById('progressOverlay');
+  if (ov) ov.classList.remove('active');
+}
+
+function parseJTL(text, filename = 'results') {
+  if (!text || text.length < 10) { hideProgress(); setText('fileNameTag','⚠ Empty file'); return; }
+
+  // Large file warning
+  const _fileMB = text.length / 1024 / 1024;
+  if (_fileMB > 300) {
+    const ok = confirm(
+      'Large file: ' + _fileMB.toFixed(0) + ' MB\n\n' +
+      'Files over 300 MB may be slow or exhaust browser memory.\n' +
+      'Tip: split large JTLs by time window for best results.\n\nProceed?'
+    );
+    if (!ok) { hideProgress(); return; }
+  }
+
+  // Stream: read header line without splitting entire text into array
+  const _firstNL = text.indexOf('\n');
+  if (_firstNL < 0) { hideProgress(); setText('fileNameTag','⚠ Empty file'); return; }
+  const _headerLine = text.slice(0, _firstNL).trim();
+  const sep = _headerLine.includes('\t') ? '\t' : ',';
+  const headers = _headerLine.split(sep).map(h => h.trim().toLowerCase().replace(/"/g,''));
+
+  const idx = {
+    ts:              headers.indexOf('timestamp'),
+    elapsed:         headers.indexOf('elapsed'),
+    label:           headers.indexOf('label'),
+    code:            headers.indexOf('responsecode'),
+    success:         headers.indexOf('success'),
+    bytes:           headers.indexOf('bytes'),
+    sentBytes:       headers.indexOf('sentbytes'),
+    latency:         headers.indexOf('latency'),
+    connectTime:     headers.indexOf('connecttime'),
+    threadName:      headers.indexOf('threadname'),
+    // New rich columns (only present if jmeter.properties is configured)
+    responseMsg:     headers.indexOf('responsemessage'),
+    failureMsg:      headers.indexOf('failuremessage'),
+    responseHeaders: headers.indexOf('responseheaders'),
+    requestHeaders:  headers.indexOf('requestheaders'),
+    // Assertion columns
+    assertResult:    headers.indexOf('assertionresults'),
+    datatype:        headers.indexOf('datatype'),
+    encoding:        headers.indexOf('encoding'),
+    idleTime:        headers.indexOf('idletime'),
+    grpthreads:      headers.indexOf('grpthreads'),
+    allthreads:      headers.indexOf('allthreads'),
+  };
+
+  allRows = [];
+
+  // ── Streaming chunked parse — scans text directly, no lines[] array ────────────
+  // Eliminates the ~1 GB memory spike from text.split('\n') on large files
+  const CHUNK = 5000;
+  let _pos = _firstNL + 1;
+  const _textLen = text.length;
+
+  showProgress(5, 'Parsing ' + filename + '…');
+
+  function processChunk() {
+    let _done = 0;
+    while (_pos < _textLen && _done < CHUNK) {
+      let _nl = text.indexOf('\n', _pos);
+      if (_nl < 0) _nl = _textLen;
+      const raw = text.slice(_pos, _nl).trim();
+      _pos = _nl + 1;
+      _done++;
+      if (!raw) continue;
+      const cols = smartSplitCSV(raw, sep);
+      if (cols.length < 3) continue;
+      const get = (field, fallback = '') => {
+        const fi = idx[field];
+        return (fi >= 0 && fi < cols.length) ? cols[fi].trim().replace(/^"|"$/g, '') : fallback;
+      };
+      try {
+        const respHeaders = get('responseHeaders');
+        const reqHeaders  = get('requestHeaders');
+        const failMsg     = get('failureMsg');
+        const respMsg     = get('responseMsg');
+        const threadName  = get('threadName');
+        const errorMsg    = failMsg || respMsg || null;
+        const traceId     = extractTraceId(respHeaders) || extractTraceId(reqHeaders) || null;
+        const spanMatch   = (respHeaders + reqHeaders).match(/x-b3-spanid:\s*([^\r\n,]+)/i);
+        const spanId      = spanMatch ? spanMatch[1].trim() : null;
+        allRows.push({
+          ts:              parseInt(get('ts',  cols[0])) || 0,
+          elapsed:         parseInt(get('elapsed', cols[1])) || 0,
+          label:           get('label', cols[2] || 'Unknown'),
+          success:         get('success', 'true').toLowerCase() === 'true',
+          code:            get('code'),
+          bytes:           parseInt(get('bytes',    '0')) || 0,
+          sentBytes:       parseInt(get('sentBytes','0')) || 0,
+          latency:         parseInt(get('latency',  '0')) || 0,
+          connectTime:     parseInt(get('connectTime','0')) || 0,
+          thread:          threadName || null,
+          errMsg:          errorMsg,
+          responseMsg:     respMsg     || null,
+          failureMsg:      failMsg     || null,
+          responseHeaders: respHeaders || null,
+          requestHeaders:  reqHeaders  || null,
+          traceId,
+          spanId,
+        });
+      } catch(e) {}
+    }
+    updateProgress(5 + Math.round((_pos / _textLen) * 88), 'Parsed ' + allRows.length.toLocaleString() + ' rows…');
+    if (_pos < _textLen) { setTimeout(processChunk, 0); return; }
+
+    // ── All chunks done ────────────────────────────────────────────────────
+    if (allRows.length === 0) { hideProgress(); alert('Could not parse any rows. Check format.'); return; }
+    updateProgress(95, 'Rendering\u2026');
+    document.getElementById('fileNameTag').textContent  = filename;
+    document.getElementById('sampleCount').textContent  = allRows.length.toLocaleString() + ' samples';
+    document.getElementById('dropZone').style.display   = 'none';
+    document.getElementById('mainHeader').style.display = 'flex';
+    document.getElementById('mainDash').style.display   = 'flex';
+    setTimeout(computeAndRender, 0);
+  }
+
+  setTimeout(processChunk, 0);
+}
+
+// ── Streaming large-file parser (>80 MB) — reads 32 MB chunks, never holds full file ──
+function streamParseJTL(file) {
+  const CHUNK_BYTES = 32 * 1048576;
+  const totalBytes  = file.size;
+  let offset   = 0;
+  let idx      = null;
+  let sep      = ',';
+  let leftover = '';
+  let isFirst  = true;
+  allRows      = [];
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+
+  function readNext() {
+    if (offset >= totalBytes) { flushLeftover(); finishParse(file.name); return; }
+    const blob   = file.slice(offset, Math.min(offset + CHUNK_BYTES, totalBytes));
+    const reader = new FileReader();
+    reader.onload = e => {
+      const isLast = offset + CHUNK_BYTES >= totalBytes;
+      const text   = leftover + decoder.decode(e.target.result, { stream: !isLast });
+      offset += CHUNK_BYTES;
+
+      const lastNL = text.lastIndexOf('\n');
+      if (lastNL < 0) { leftover = text; schedNext(); return; }
+      leftover = text.slice(lastNL + 1);
+      const chunk = text.slice(0, lastNL);
+
+      let pos = 0;
+      if (isFirst) {
+        isFirst = false;
+        const fnl = chunk.indexOf('\n');
+        if (fnl < 0) { leftover = chunk + leftover; schedNext(); return; }
+        const hdr = chunk.slice(0, fnl).trim();
+        sep = hdr.includes('\t') ? '\t' : ',';
+        idx = buildIdx(hdr.split(sep).map(h => h.trim().toLowerCase().replace(/"/g,'')));
+        pos = fnl + 1;
+      }
+
+      const len = chunk.length;
+      while (pos < len) {
+        const nl  = chunk.indexOf('\n', pos);
+        const end = nl < 0 ? len : nl;
+        const raw = chunk.slice(pos, end).trim();
+        pos = end + 1;
+        if (!raw) continue;
+        const cols = smartSplitCSV(raw, sep);
+        if (cols.length >= 3) allRows.push(buildRow(cols, idx));
+      }
+
+      const done = Math.min(offset, totalBytes);
+      updateProgress(
+        Math.min(95, Math.round((done / totalBytes) * 92)),
+        'Parsed ' + allRows.length.toLocaleString() + ' rows (' + (done/1048576).toFixed(0) + ' / ' + (totalBytes/1048576).toFixed(0) + ' MB)\u2026'
+      );
+      schedNext();
+    };
+    reader.onerror = () => { hideProgress(); alert('Error reading file.'); };
+    reader.readAsArrayBuffer(blob);
+  }
+
+  function flushLeftover() {
+    if (leftover.trim()) {
+      const cols = smartSplitCSV(leftover.trim(), sep);
+      if (cols.length >= 3 && idx) allRows.push(buildRow(cols, idx));
+    }
+  }
+
+  function schedNext() {
+    if (offset < totalBytes) setTimeout(readNext, 0);
+    else { flushLeftover(); finishParse(file.name); }
+  }
+
+  readNext();
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+function buildIdx(headers) {
+  return {
+    ts:              headers.indexOf('timestamp'),
+    elapsed:         headers.indexOf('elapsed'),
+    label:           headers.indexOf('label'),
+    code:            headers.indexOf('responsecode'),
+    success:         headers.indexOf('success'),
+    bytes:           headers.indexOf('bytes'),
+    sentBytes:       headers.indexOf('sentbytes'),
+    latency:         headers.indexOf('latency'),
+    connectTime:     headers.indexOf('connecttime'),
+    threadName:      headers.indexOf('threadname'),
+    responseMsg:     headers.indexOf('responsemessage'),
+    failureMsg:      headers.indexOf('failuremessage'),
+    responseHeaders: headers.indexOf('responseheaders'),
+    requestHeaders:  headers.indexOf('requestheaders'),
+  };
+}
+
+function buildRow(cols, idx) {
+  const get = (field, fallback = '') => {
+    const fi = idx[field];
+    return (fi >= 0 && fi < cols.length) ? cols[fi].trim().replace(/^"|"$/g,'') : fallback;
+  };
+  const respHdr = get('responseHeaders');
+  const reqHdr  = get('requestHeaders');
+  const failMsg = get('failureMsg');
+  const respMsg = get('responseMsg');
+  const traceId = extractTraceId(respHdr) || extractTraceId(reqHdr) || null;
+  const spanM   = (respHdr + reqHdr).match(/x-b3-spanid:\s*([^\r\n,]+)/i);
+  return {
+    ts:              parseInt(get('ts',      cols[0])) || 0,
+    elapsed:         parseInt(get('elapsed', cols[1])) || 0,
+    label:           get('label', cols[2] || 'Unknown'),
+    success:         get('success','true').toLowerCase() === 'true',
+    code:            get('code'),
+    bytes:           parseInt(get('bytes','0'))     || 0,
+    sentBytes:       parseInt(get('sentBytes','0')) || 0,
+    latency:         parseInt(get('latency','0'))   || 0,
+    connectTime:     parseInt(get('connectTime','0')) || 0,
+    thread:          get('threadName') || null,
+    errMsg:          failMsg || respMsg || null,
+    responseMsg:     respMsg  || null,
+    failureMsg:      failMsg  || null,
+    responseHeaders: respHdr  || null,
+    requestHeaders:  reqHdr   || null,
+    traceId,
+    spanId:          spanM ? spanM[1].trim() : null,
+  };
+}
+
+function finishParse(filename) {
+  if (allRows.length === 0) { hideProgress(); alert('Could not parse any rows. Check format.'); return; }
+  updateProgress(98, 'Rendering\u2026');
+  document.getElementById('fileNameTag').textContent  = filename;
+  document.getElementById('sampleCount').textContent  = allRows.length.toLocaleString() + ' samples';
+  document.getElementById('dropZone').style.display   = 'none';
+  document.getElementById('mainHeader').style.display = 'flex';
+  document.getElementById('mainDash').style.display   = 'flex';
+  setTimeout(computeAndRender, 0);
+}
+
+// Smart CSV split that handles quoted fields with commas inside
+function smartSplitCSV(line, sep) {
+  if (sep === '\t') return line.split('\t');
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ─── Compute Stats ────────────────────────────────────────────────────────────
+function computeAndRender() {
+  hideProgress();
+  const rows = allRows;
+  const n    = rows.length;
+
+  // ── Single pass: elapsed[], bytes[], ts bounds, error list ────────────────
+  const elapsedArr = new Float64Array(n);
+  let sumElapsed = 0, sumBytes = 0;
+  let minTs = Infinity, maxTs = -Infinity;
+  const errors = [];
+
+  for (let i = 0; i < n; i++) {
+    const r       = rows[i];
+    elapsedArr[i] = r.elapsed;
+    sumElapsed   += r.elapsed;
+    sumBytes     += r.bytes;
+    if (r.ts < minTs) minTs = r.ts;
+    if (r.ts > maxTs) maxTs = r.ts;
+    if (!r.success) errors.push(r);
+  }
+
+  const durationSec = (maxTs - minTs) / 1000 || 1;
+  const throughput  = n / durationSec;
+
+  // Sorted copy for percentiles (TypedArray.sort is numeric by default — fast)
+  const sorted = elapsedArr.slice().sort();
+  const pct    = p => sorted[Math.min(n - 1, Math.floor((p / 100) * n))] || 0;
+
+  // ── Summary KPIs ──────────────────────────────────────────────────────────
+  setText('sTotalSamples', n.toLocaleString());
+  setText('sDuration', 'duration ' + fmtDuration(durationSec));
+  renderRunTimeline(minTs, maxTs, durationSec, allRows);
+  setText('sAvgResp',   fmtMs(Math.round(sumElapsed / n)));
+  setText('sMedian',    'median ' + fmtMs(pct(50)));
+  setText('sThroughput', throughput.toFixed(1));
+  const errRate = errors.length / n * 100;
+  setText('sErrorRate',  errRate.toFixed(1) + '%');
+  document.getElementById('sErrorRate').style.color = errRate > 2 ? 'var(--red)' : 'var(--green)';
+  setText('sErrorCount', errors.length.toLocaleString() + ' errors');
+  setText('sAvgBytes',   fmtBytes(Math.round(sumBytes / n)));
+  setText('sP90',  fmtMs(pct(90)));
+  setText('sP99',  'p99 ' + fmtMs(pct(99)));
+
+  ['p50','p75','p90','p99'].forEach((id, i) => {
+    document.getElementById(id).textContent = fmtMs(pct([50,75,90,99][i]));
+  });
+
+  // ── Time-series bucketing (single pass) ───────────────────────────────────
+  const BUCKETS    = 50;
+  const bucketSize = durationSec / BUCKETS;
+  const bSum   = new Float64Array(BUCKETS);
+  const bCount = new Int32Array(BUCKETS);
+  const bErrs  = new Int32Array(BUCKETS);
+  const bMin   = new Float64Array(BUCKETS).fill(Infinity);
+  const bMax   = new Float64Array(BUCKETS);
+  // Store elapsed per bucket for p95 (only ~4000 rows/bucket at 200k/50)
+  const bElapsed = Array.from({length: BUCKETS}, () => []);
+
+  for (let i = 0; i < n; i++) {
+    const r  = rows[i];
+    const bi = Math.min(BUCKETS - 1, Math.floor(((r.ts - minTs) / 1000) / bucketSize));
+    bSum[bi]    += r.elapsed;
+    bCount[bi]  += 1;
+    bElapsed[bi].push(r.elapsed);
+    if (r.elapsed < bMin[bi]) bMin[bi] = r.elapsed;
+    if (r.elapsed > bMax[bi]) bMax[bi] = r.elapsed;
+    if (!r.success) bErrs[bi]++;
+  }
+
+  const tsAvg      = [];
+  const tsP95      = [];
+  const tsMin      = [];
+  const tsErrRate  = [];
+  const tsTps      = [];
+  let   maxP95     = 0;
+  let   maxErrRate = 0;
+  let   maxTps     = 0;
+
+  for (let b = 0; b < BUCKETS; b++) {
+    const cnt = bCount[b];
+    if (cnt === 0) {
+      tsAvg.push(0); tsP95.push(0); tsMin.push(0);
+      tsErrRate.push(0); tsTps.push(0);
+      continue;
+    }
+    const avg_v = bSum[b] / cnt;
+    const arr   = bElapsed[b].sort((a, x) => a - x);
+    const p95_v = arr[Math.floor(0.95 * cnt)] || 0;
+    const min_v = bMin[b] === Infinity ? 0 : bMin[b];
+    const err_v = bErrs[b] / cnt * 100;
+    const tps_v = cnt / bucketSize;
+    tsAvg.push(avg_v);
+    tsP95.push(p95_v);
+    tsMin.push(min_v);
+    tsErrRate.push(err_v);
+    tsTps.push(tps_v);
+    if (p95_v > maxP95)     maxP95     = p95_v;
+    if (err_v > maxErrRate) maxErrRate = err_v;
+    if (tps_v > maxTps)     maxTps     = tps_v;
+  }
+
+  const fmtBucketTime = ts => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+  };
+  const tsLabels = Array.from({length: BUCKETS}, (_, i) =>
+    fmtBucketTime(minTs + i * bucketSize * 1000));
+
+  // ── Charts ────────────────────────────────────────────────────────────────
+  drawLineChart('respTimeChart',
+    [{data:tsAvg, color:'var(--blue)',  fill:true},
+     {data:tsP95, color:'var(--red)',   fill:false},
+     {data:tsMin, color:'var(--green)', fill:false}],
+    { maxY: maxP95 * 1.1 || 1000, tsLabels, yUnit:'ms' }
+  );
+  drawLineChart('errorChart',
+    [{data:tsErrRate, color:'var(--red)', fill:true}],
+    { maxY: Math.max(5, maxErrRate * 1.2), tsLabels, yUnit:'%' }
+  );
+  drawLineChart('tpsChart',
+    [{data:tsTps, color:'var(--green)', fill:true}],
+    { maxY: maxTps * 1.2 || 1, tsLabels, yUnit:'/s' }
+  );
+
+  drawDensityCurve('densityChart', sorted, { p50: pct(50), p90: pct(90), p99: pct(99) });
+
+  drawBarChart('percBarChart', [pct(50),pct(75),pct(90),pct(99)],
+    ['P50','P75','P90','P99'],
+    ['var(--green)','var(--yellow)','var(--orange)','var(--red)'], true
+  );
+
+  // ── Per-label stats (safe: no spread on large arrays) ────────────────────
+  const labelMap = {};
+  for (let i = 0; i < n; i++) {
+    const r  = rows[i];
+    let lm   = labelMap[r.label];
+    if (!lm) { lm = { count:0, elapsed:[], errors:0, sumBytes:0 }; labelMap[r.label] = lm; }
+    lm.count++;
+    lm.elapsed.push(r.elapsed);
+    lm.sumBytes += r.bytes;
+    if (!r.success) lm.errors++;
+  }
+
+  labelStats = Object.entries(labelMap).map(([label, d]) => {
+    const arr = d.elapsed;
+    const cnt = arr.length;
+    let mn = Infinity, mx = -Infinity, sm = 0;
+    for (let i = 0; i < cnt; i++) {
+      if (arr[i] < mn) mn = arr[i];
+      if (arr[i] > mx) mx = arr[i];
+      sm += arr[i];
+    }
+    const mean   = sm / cnt;
+    let   vsum   = 0;
+    for (let i = 0; i < cnt; i++) { const d = arr[i] - mean; vsum += d * d; }
+    const s90 = arr.slice().sort((a, b) => a - b);
+    return {
+      label,
+      count:    d.count,
+      avg:      Math.round(mean),
+      min:      mn === Infinity  ? 0 : mn,
+      max:      mx === -Infinity ? 0 : mx,
+      p90:      s90[Math.floor(0.9 * cnt)] || 0,
+      stddev:   Math.round(Math.sqrt(vsum / cnt)),
+      err:      d.errors / d.count * 100,
+      tps:      (d.count / durationSec).toFixed(1),
+      avgBytes: Math.round(d.sumBytes / cnt),
+    };
+  });
+
+  filteredRows = [...labelStats];
+  renderTable();
+  renderSlowestTransactions(labelStats, durationSec);
+  renderStatusBreakdown(rows);
+  renderErrorDetail(errors.slice(0, 1000), n);
+
+  // Scorecard metrics
+  const slowCount = elapsedArr.reduce((acc, v) => acc + (v > 2000 ? 1 : 0), 0);
+  renderScorecard(
+    sumElapsed / n,          // avgMs
+    errors.length / n * 100, // errPct
+    pct(99),                 // p99Ms
+    throughput,              // tps
+    pct(90),                 // p90Ms
+    pct(50),                 // p50Ms
+    slowCount / n * 100      // slowPct
+  );
+}
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+function renderTableRow(r, maxResp) {
+  const barW     = Math.round((r.avg / maxResp) * 80);
+  const errColor = r.err > 5 ? 'var(--red)' : r.err > 1 ? 'var(--yellow)' : 'var(--green)';
+  const barColor = r.avg > 3000 ? 'var(--red)' : r.avg > 1000 ? 'var(--yellow)' : 'var(--blue)';
+  return `<tr>
+    <td style="color:var(--text);font-weight:600">${escHtml(r.label)}</td>
+    <td style="color:var(--muted)">${r.count.toLocaleString()}</td>
+    <td><div class="resp-bar"><span style="color:${barColor}">${r.avg}</span>
+      <div class="resp-bar-track"><div class="resp-bar-fill" style="width:${barW}%;background:${barColor}"></div></div></div></td>
+    <td style="color:var(--green)">${r.min}</td>
+    <td style="color:var(--red)">${r.max}</td>
+    <td style="color:var(--orange)">${r.p90}</td>
+    <td style="color:var(--muted)">±${r.stddev}</td>
+    <td style="color:${errColor}">${r.err.toFixed(1)}%</td>
+    <td style="color:var(--green)">${r.tps}</td>
+    <td style="color:var(--muted)">${fmtBytes(r.avgBytes)}</td>
+    <td><span class="pass-pill ${r.err < 1 ? 'pass' : 'fail'}">${r.err < 1 ? 'PASS' : 'FAIL'}</span></td>
+  </tr>`;
+}
+
+function renderTable() {
+  const body = document.getElementById('breakdownBody');
+  const maxResp = Math.max(...filteredRows.map(r=>r.max));
+  const start = page * PER_PAGE;
+  const pageRows = filteredRows.slice(start, start + PER_PAGE);
+
+  body.innerHTML = pageRows.map(r => renderTableRow(r, maxResp)).join('');
+
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredRows.length / PER_PAGE);
+  const pg = document.getElementById('pagination');
+  if (total <= 1) { pg.innerHTML=''; return; }
+  let html = '';
+  for (let i=0;i<total;i++) {
+    html += `<button class="pg-btn ${i===page?'active':''}" onclick="goPage(${i})">${i+1}</button>`;
+  }
+  html += `<span class="pg-info">Showing ${Math.min(filteredRows.length, (page+1)*PER_PAGE)} of ${filteredRows.length}</span>`;
+  pg.innerHTML = html;
+}
+
+function goPage(p) { page = p; renderTable(); }
+
+function filterTable() {
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  filteredRows = labelStats.filter(r => r.label.toLowerCase().includes(q));
+  page = 0;
+  renderTable();
+}
+
+function sortTable(key, btn) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filteredRows.sort((a,b) => {
+    const av = typeof a[key]==='string' ? a[key] : +a[key];
+    const bv = typeof b[key]==='string' ? b[key] : +b[key];
+    return av > bv ? sortDir : av < bv ? -sortDir : 0;
+  });
+  page = 0;
+  renderTable();
+}
+
+// ─── Density Curve ────────────────────────────────────────────────────────────
+function drawDensityCurve(id, sortedElapsed, { p50, p90, p99 }) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof canvas.getContext !== 'function' || !sortedElapsed.length) return;
+  const _box1 = (canvas.closest ? canvas.closest('.chart-box') : null) || canvas.parentElement;
+  const _cs1  = _box1 && window.getComputedStyle ? window.getComputedStyle(_box1) : {};
+  const W = Math.round((_box1 ? _box1.offsetWidth : 0) - parseFloat(_cs1.paddingLeft||'0') - parseFloat(_cs1.paddingRight||'0')) || 500;
+  const H = parseInt(canvas.dataset.lh || (canvas.dataset.lh = canvas.getAttribute('height'))) || 130;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = false;
+  ctx.setLineDash([]);          // reset any dash left by previous crosshair
+  ctx.clearRect(0, 0, W, H);
+
+  const BINS   = 60;
+  const cap    = Math.min(sortedElapsed[sortedElapsed.length-1], p99 * 1.2);
+  const binW   = cap / BINS;
+  const counts = Array(BINS).fill(0);
+  sortedElapsed.forEach(v => {
+    const b = Math.min(BINS-1, Math.floor(v / binW));
+    counts[b]++;
+  });
+
+  // Gaussian smooth (kernel width=2)
+  const smooth = counts.map((_, i) => {
+    let s = 0, w = 0;
+    for (let k = -3; k <= 3; k++) {
+      const j = i+k;
+      if (j < 0 || j >= BINS) continue;
+      const wk = Math.exp(-0.5*k*k);
+      s += counts[j]*wk; w += wk;
+    }
+    return s/w;
+  });
+
+  const maxSmooth = Math.max(...smooth) || 1;
+  const pad = { t:12, b:28, l:36, r:12 };
+  const cW  = W - pad.l - pad.r;
+  const cH  = H - pad.t - pad.b;
+  const mutedC  = getComputedColor('var(--muted)');
+  const borderC = getComputedColor('var(--border)');
+  const blueC   = getComputedColor('var(--blue)');
+
+  // Grid
+  for (let i=0; i<=3; i++) {
+    const y = pad.t + (cH/3)*i;
+    ctx.strokeStyle = borderC; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+  }
+
+  // Filled density curve
+  ctx.beginPath();
+  smooth.forEach((v,i) => {
+    const x = pad.l + (i/BINS)*cW;
+    const y = pad.t + cH - (v/maxSmooth)*cH*0.9;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.lineTo(pad.l + cW, pad.t + cH);
+  ctx.lineTo(pad.l,      pad.t + cH);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t+cH);
+  grad.addColorStop(0, blueC+'50');
+  grad.addColorStop(1, blueC+'05');
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Curve line
+  ctx.beginPath();
+  smooth.forEach((v,i) => {
+    const x = pad.l + (i/BINS)*cW;
+    const y = pad.t + cH - (v/maxSmooth)*cH*0.9;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = blueC; ctx.lineWidth = 2; ctx.lineJoin='round'; ctx.stroke();
+
+  // Percentile markers
+  const markers = [
+    { val: p50, color: getComputedColor('var(--yellow)'),  label:'P50' },
+    { val: p90, color: getComputedColor('var(--orange)'),  label:'P90' },
+    { val: p99, color: getComputedColor('var(--red)'),     label:'P99' },
+  ];
+  markers.forEach(({ val, color, label }) => {
+    if (val > cap) return;
+    const x = pad.l + (val/cap)*cW;
+    // Dashed vertical line
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t+cH); ctx.stroke();
+    ctx.setLineDash([]);
+    // Label at top
+    ctx.fillStyle = color; ctx.font = 'bold 11px "Fira Code", monospace'; ctx.textAlign = 'center';
+    ctx.fillText(label, x, pad.t+9);
+    // Value label at bottom
+    const valStr = val >= 1000 ? (val/1000).toFixed(1)+'s' : Math.round(val)+'ms';
+    ctx.font = '600 10px "Fira Code", monospace'; ctx.fillStyle = color;
+    ctx.fillText(valStr, x, pad.t+cH+13);
+  });
+
+  // X-axis: a few ms labels
+  ctx.fillStyle = mutedC; ctx.font = '600 10px "Fira Code", monospace';
+  const xTicks = [0, 0.25, 0.5, 0.75, 1.0];
+  xTicks.forEach(t => {
+    const x   = pad.l + t*cW;
+    const val = t*cap;
+    const str = val >= 1000 ? (val/1000).toFixed(1)+'s' : Math.round(val)+'ms';
+    ctx.textAlign = t===0 ? 'left' : t===1 ? 'right' : 'center';
+    ctx.fillText(str, x, pad.t+cH+22);
+  });
+
+  // Baseline
+  ctx.strokeStyle = borderC; ctx.lineWidth=0.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t+cH); ctx.lineTo(W-pad.r, pad.t+cH); ctx.stroke();
+}
+
+// ─── Error State ─────────────────────────────────────────────────────────────
+let allErrors = [];
+let errFilterCode = 'all';
+let errGroups = [];
+
+function renderErrorDetail(errors, totalSamples) {
+  allErrors = errors;
+  const badge = document.getElementById('errTotalBadge');
+  if (badge) badge.textContent = errors.length.toLocaleString() + ' errors';
+  filterErrors();
+}
+
+function setErrFilter(code, btn) {
+  errFilterCode = code;
+  document.querySelectorAll('.err-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterErrors();
+}
+
+function filterErrors() {
+  const q     = (document.getElementById('errSearch')?.value || '').toLowerCase();
+  const body  = document.getElementById('errDetailBody');
+  if (!body) return;
+
+  let filtered = allErrors;
+  if (errFilterCode === '5xx') filtered = filtered.filter(r => r.code?.startsWith('5'));
+  else if (errFilterCode === '4xx') filtered = filtered.filter(r => r.code?.startsWith('4'));
+  else if (errFilterCode === 'other') filtered = filtered.filter(r => !r.code?.startsWith('4') && !r.code?.startsWith('5'));
+  if (q) filtered = filtered.filter(r =>
+    (r.label||'').toLowerCase().includes(q) ||
+    (r.code||'').includes(q) ||
+    (r.errMsg||'').toLowerCase().includes(q)
+  );
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<div class="no-errors-msg">✓ No matching errors</div>';
+    return;
+  }
+
+  // Build summary groups
+  const groups = {};
+  filtered.forEach(r => {
+    const key = `${r.code}||${r.label}`;
+    if (!groups[key]) groups[key] = { code: r.code, label: r.label, samples: [], count: 0 };
+    groups[key].count++;
+    groups[key].samples.push(r);
+  });
+
+  const sorted = Object.values(groups).sort((a,b) => b.count - a.count);
+  const maxCnt = sorted[0].count;
+
+  // Store groups globally for paginated access
+  errGroups = sorted;
+
+  const rows = sorted.map((g, gi) => {
+    const errColor = g.code?.startsWith('5') ? 'var(--red)' : g.code?.startsWith('4') ? 'var(--yellow)' : 'var(--muted)';
+    const pct   = ((g.count / allErrors.length) * 100).toFixed(1);
+    const barW  = Math.round((g.count / maxCnt) * 100);
+
+    const jsonSample  = g.samples[0];
+    const jsonPreview = JSON.stringify({
+      timestamp:            new Date(jsonSample?.ts||0).toISOString(),
+      label:                jsonSample?.label,
+      responseCode:         jsonSample?.code,
+      elapsed_ms:           jsonSample?.elapsed,
+      latency_ms:           jsonSample?.latency   || 'not_captured',
+      connectTime_ms:       jsonSample?.connectTime || 'not_captured',
+      bytes:                jsonSample?.bytes,
+      sentBytes:            jsonSample?.sentBytes  || 'not_captured',
+      thread:               jsonSample?.thread     || 'not_captured',
+      traceId:              jsonSample?.traceId    || 'not_captured',
+      spanId:               jsonSample?.spanId     || 'not_captured',
+      assertionFailureMsg:  jsonSample?.failureMsg || 'not_captured',
+      responseMessage:      jsonSample?.responseMsg|| 'not_captured',
+      errorMessage:         jsonSample?.errMsg     || 'not_captured',
+      responseHeaders:      jsonSample?.responseHeaders ? '(present — ' + jsonSample.responseHeaders.length + ' chars)' : 'not_captured',
+      success:              false,
+    }, null, 2);
+
+    const noteHtml = `<div class="eds-note">
+      💡 <strong>Trace IDs</strong> are populated when JMeter's response data saving is enabled, or when your app injects <code>X-Trace-Id</code> headers.<br>
+      Enable in JMeter: add <code>jmeter.save.saveservice.response_data=true</code> to jmeter.properties.
+    </div>`;
+
+    return `
+    <tr class="err-summary-row" id="err-row-${gi}">
+      <td style="color:${errColor};font-weight:700">${escHtml(g.code||"")}</td>
+      <td style="color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(g.label)}">${escHtml(g.label)}</td>
+      <td style="color:var(--muted)">
+        ${g.count.toLocaleString()}
+        <span class="eds-count-badge">${g.count} total</span>
+      </td>
+      <td>
+        <div class="err-pct-bar">
+          <div class="err-pct-track"><div class="err-pct-fill" style="width:${barW}%"></div></div>
+          <span style="color:var(--red);font-size:10px">${pct}%</span>
+        </div>
+      </td>
+      <td style="color:var(--muted);font-size:9px">${fmtMs(Math.round(g.samples.reduce((a,s)=>a+s.elapsed,0)/g.count))}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="err-expand-btn" onclick="toggleErrDetail(${gi})">▶ Details</button>
+        <button class="eds-export-btn" onclick="exportGroupErrors(${gi})">⬇ CSV</button>
+      </td>
+    </tr>
+    <tr class="err-detail-row" id="err-detail-${gi}">
+      <td class="err-detail-cell" colspan="6">
+        <div class="err-detail-inner">
+          <div class="err-detail-section">
+            <div class="eds-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>All Error Samples — <span id="eds-count-${gi}">${g.count}</span> total</span>
+              <span id="eds-page-info-${gi}" style="color:var(--muted);font-size:9px"></span>
+            </div>
+            <div class="eds-samples" id="eds-samples-${gi}"></div>
+            <div class="eds-pager" id="eds-pager-${gi}"></div>
+            ${noteHtml}
+          </div>
+          <div class="err-detail-section">
+            <div class="eds-label">Sample JSON (first occurrence)</div>
+            <pre class="eds-json">${escHtml(jsonPreview)}</pre>
+            <div class="eds-label" style="margin-top:10px">Enable full response capture</div>
+            <div class="eds-note">Add to <code>jmeter.properties</code>:<br>
+              <code>jmeter.save.saveservice.response_data.on_error=true</code><br>
+              <code>jmeter.save.saveservice.response_headers=true</code><br>
+              <code>jmeter.save.saveservice.request_headers=true</code>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<div style="overflow-x:auto"><table class="err-summary-tbl">
+    <thead><tr>
+      <th>Code</th><th>Endpoint</th><th>Count</th>
+      <th>% of Errors</th><th>Avg Time</th><th>Actions</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ─── Sample page state ────────────────────────────────────────────────────────
+const SAMPLES_PER_PAGE = 25;
+const samplePages = {}; // groupIdx -> currentPage
+
+function toggleErrDetail(idx) {
+  const detail = document.getElementById(`err-detail-${idx}`);
+  const btn    = document.querySelector(`#err-row-${idx} .err-expand-btn`);
+  if (!detail) return;
+  const open = detail.classList.toggle('open');
+  if (btn) btn.textContent = open ? '▼ Close' : '▶ Details';
+  if (open) {
+    samplePages[idx] = samplePages[idx] ?? 0;
+    renderSamplePage(idx, samplePages[idx]);
+  }
+}
+
+function renderSamplePage(gi, pageNum) {
+  const g = errGroups[gi];
+  if (!g) return;
+  samplePages[gi] = pageNum;
+
+  const totalPages = Math.ceil(g.samples.length / SAMPLES_PER_PAGE);
+  const start = pageNum * SAMPLES_PER_PAGE;
+  const end   = Math.min(start + SAMPLES_PER_PAGE, g.samples.length);
+  const slice = g.samples.slice(start, end);
+
+  // Render samples
+  const samplesEl = document.getElementById(`eds-samples-${gi}`);
+  if (samplesEl) {
+    samplesEl.innerHTML = slice.map(s => {
+      const ts   = new Date(s.ts).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+      const date = new Date(s.ts).toLocaleDateString(undefined,{month:'short',day:'2-digit'});
+
+      // Best error message: assertion failure → response message → generic
+      const primaryMsg = s.failureMsg || s.responseMsg || s.errMsg || null;
+      const msgHtml = primaryMsg
+        ? `<div class="eds-msg">${escHtml(primaryMsg)}</div>`
+        : `<div class="eds-msg" style="color:var(--muted);font-style:italic">No error message captured — enable responseMessage in jmeter.properties</div>`;
+
+      const tid  = s.traceId || null;
+      const sid  = s.spanId  || null;
+      const thrd = s.thread  || null;
+      const lat  = s.latency  ? fmtMs(s.latency)  : null;
+      const conn = s.connectTime ? fmtMs(s.connectTime) : null;
+      const sent = s.sentBytes ? fmtBytes(s.sentBytes) : null;
+
+      // Trace / metadata row
+      const metaParts = [];
+      if (tid)  metaParts.push(`<span>Trace: <strong style="color:var(--blue)">${escHtml(tid)}</strong> <button class="eds-copy" data-copy="${escHtml(tid)}" onclick="navigator.clipboard?.writeText(this.dataset.copy)">⎘</button></span>`);
+      if (sid)  metaParts.push(`Span: <strong>${sid}</strong>`);
+      if (thrd) metaParts.push(`Thread: ${escHtml(thrd)}`);
+      if (lat)  metaParts.push(`Latency: ${lat}`);
+      if (conn) metaParts.push(`Connect: ${conn}`);
+      if (sent) metaParts.push(`Sent: ${sent}`);
+
+      const metaHtml = metaParts.length
+        ? `<div class="eds-trace">${metaParts.join(' &nbsp;|&nbsp; ')}</div>`
+        : `<div class="eds-trace" style="color:var(--muted);font-style:italic">Trace IDs not captured — enable responseHeaders in jmeter.properties</div>`;
+
+      // Response headers snippet (first 3 relevant lines)
+      let headersHtml = '';
+      if (s.responseHeaders) {
+        const importantHeaders = s.responseHeaders.split(/\r?\n/)
+          .filter(h => /x-trace|x-request|traceparent|x-b3|content-type|server|x-amzn|location/i.test(h))
+          .slice(0, 5);
+        if (importantHeaders.length) {
+          headersHtml = `<div class="eds-headers">${importantHeaders.map(h => escHtml(h)).join('<br>')}</div>`;
+        }
+      }
+
+      return `<div class="eds-sample">
+        <div class="eds-sample-top">
+          <span class="eds-sample-time">⏱ ${date} ${ts}</span>
+          <span class="eds-sample-code">${s.code}</span>
+          <span class="eds-sample-elapsed">${fmtMs(s.elapsed)}</span>
+        </div>
+        ${msgHtml}
+        ${headersHtml}
+        ${metaHtml}
+      </div>`;
+    }).join('');
+  }
+
+  // Render pager
+  const pagerEl = document.getElementById(`eds-pager-${gi}`);
+  if (pagerEl && totalPages > 1) {
+    let pgHtml = '';
+    // Prev
+    pgHtml += `<button class="eds-pager-btn" ${pageNum===0?'disabled style="opacity:0.3"':''} onclick="renderSamplePage(${gi},${pageNum-1})">← Prev</button>`;
+    // Page numbers (show up to 7 around current)
+    const startPg = Math.max(0, pageNum - 3);
+    const endPg   = Math.min(totalPages - 1, pageNum + 3);
+    if (startPg > 0) pgHtml += `<button class="eds-pager-btn" onclick="renderSamplePage(${gi},0)">1</button><span style="color:var(--muted);font-size:10px">…</span>`;
+    for (let p = startPg; p <= endPg; p++) {
+      pgHtml += `<button class="eds-pager-btn ${p===pageNum?'active':''}" onclick="renderSamplePage(${gi},${p})">${p+1}</button>`;
+    }
+    if (endPg < totalPages - 1) pgHtml += `<span style="color:var(--muted);font-size:10px">…</span><button class="eds-pager-btn" onclick="renderSamplePage(${gi},${totalPages-1})">${totalPages}</button>`;
+    // Next
+    pgHtml += `<button class="eds-pager-btn" ${pageNum===totalPages-1?'disabled style="opacity:0.3"':''} onclick="renderSamplePage(${gi},${pageNum+1})">Next →</button>`;
+    // Info
+    pgHtml += `<span class="eds-pager-info">Showing ${start+1}–${end} of ${g.samples.length} samples</span>`;
+    pagerEl.innerHTML = pgHtml;
+  } else if (pagerEl) {
+    pagerEl.innerHTML = `<span class="eds-pager-info">${g.samples.length} sample${g.samples.length!==1?'s':''} — all shown</span>`;
+  }
+}
+
+// ─── Export group errors as CSV ───────────────────────────────────────────────
+function exportGroupErrors(gi) {
+  const g = errGroups[gi];
+  if (!g) return;
+  const headers = ['Timestamp','Label','ResponseCode','Elapsed(ms)','Latency(ms)',
+    'ConnectTime(ms)','Bytes','SentBytes','Thread','TraceId','SpanId',
+    'AssertionFailureMsg','ResponseMessage','ErrorMessage'];
+  const escape = v => v == null ? '' : ('"' + String(v).replace(/"/g,'""').replace(/\n/g,' ') + '"');
+  const lines = [headers.join(',')];
+  g.samples.forEach(s => {
+    lines.push([
+      new Date(s.ts).toISOString(),
+      escape(s.label),
+      s.code,
+      s.elapsed,
+      s.latency||0,
+      s.connectTime||0,
+      s.bytes||0,
+      s.sentBytes||0,
+      escape(s.thread),
+      escape(s.traceId),
+      escape(s.spanId),
+      escape(s.failureMsg),
+      escape(s.responseMsg),
+      escape(s.errMsg),
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `errors-${g.code}-${g.label.replace(/[^a-z0-9]/gi,'_').slice(0,30)}.csv`;
+  a.click();
+}
+
+// ─── Chart Registry (stores data for hover) ──────────────────────────────────
+const chartRegistry = {};
+
+// ─── Chart Helpers ────────────────────────────────────────────────────────────
+function drawLineChart(id, datasets, opts={}) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof canvas.getContext !== 'function') return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const _box2 = (canvas.closest ? canvas.closest('.chart-box') : null) || canvas.parentElement;
+  const _cs2  = _box2 && window.getComputedStyle ? window.getComputedStyle(_box2) : {};
+  const W = Math.round((_box2 ? _box2.offsetWidth : 0) - parseFloat(_cs2.paddingLeft||'0') - parseFloat(_cs2.paddingRight||'0')) || 600;
+  const H = parseInt(canvas.dataset.lh || (canvas.dataset.lh = (canvas.getAttribute ? canvas.getAttribute('height') : '150'))) || 150;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const maxY     = opts.maxY || 1000;
+  const tsLabels = opts.tsLabels || [];
+  const yUnit    = opts.yUnit || '';
+
+  // Clean padding — enough bottom space for just HH:MM, no clutter
+  const pad = { t:12, b: tsLabels.length ? 28 : 14, l:46, r:12 };
+  const cW  = W - pad.l - pad.r;
+  const cH  = H - pad.t - pad.b;
+
+  const mutedC  = getComputedColor('var(--muted)');
+  const borderC = getComputedColor('var(--border)');
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = false;
+  ctx.setLineDash([]);
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Y grid + labels (4 lines) ──────────────────────────────────────────────
+  for (let i = 0; i <= 4; i++) {
+    const y   = pad.t + (cH / 4) * i;
+    const val = maxY * (1 - i / 4);
+    ctx.strokeStyle = borderC; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    ctx.fillStyle = mutedC; ctx.font = '600 10px "Fira Code", monospace'; ctx.textAlign = 'right';
+    ctx.fillText(val >= 1000 ? (val/1000).toFixed(1)+'k'+yUnit : Math.round(val)+yUnit, pad.l - 5, y + 3);
+  }
+
+  // ── X-axis: show exactly 5 clean time labels ───────────────────────────────
+  if (tsLabels.length > 1) {
+    const n     = tsLabels.length;
+    const ticks = [0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n-1];
+    const step  = cW / (n - 1);
+
+    // baseline
+    ctx.strokeStyle = borderC; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, pad.t + cH); ctx.lineTo(W - pad.r, pad.t + cH); ctx.stroke();
+
+    ticks.forEach(ti => {
+      const x = pad.l + ti * step;
+      ctx.strokeStyle = borderC; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x, pad.t + cH); ctx.lineTo(x, pad.t + cH + 3); ctx.stroke();
+      ctx.fillStyle = mutedC; ctx.font = '600 10px "Fira Code", monospace';
+      ctx.textAlign = ti === 0 ? 'left' : ti === n-1 ? 'right' : 'center';
+      ctx.fillText(tsLabels[ti], x, pad.t + cH + 13);
+    });
+  }
+
+  // ── Dataset lines + fills ──────────────────────────────────────────────────
+  datasets.forEach(({ data, color, fill }) => {
+    if (!data?.length) return;
+    const step = cW / Math.max(data.length - 1, 1);
+    const cc   = getComputedColor(color);
+
+    const getXY = i => ({
+      x: pad.l + i * step,
+      y: pad.t + cH - (Math.min(Math.max(data[i], 0), maxY) / maxY) * cH
+    });
+
+    ctx.beginPath();
+    data.forEach((_, i) => { const p = getXY(i); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+
+    if (fill) {
+      ctx.lineTo(pad.l + (data.length - 1) * step, pad.t + cH);
+      ctx.lineTo(pad.l, pad.t + cH);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + cH);
+      grad.addColorStop(0, cc + '28'); grad.addColorStop(1, cc + '00');
+      ctx.fillStyle = grad; ctx.fill();
+      ctx.beginPath();
+      data.forEach((_, i) => { const p = getXY(i); i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+    }
+    ctx.strokeStyle = cc; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+  });
+
+  // ── Store in registry for hover ────────────────────────────────────────────
+  // ── Create/update overlay canvas for crosshair (drawn separately, never resizes chart) ──
+  const _wrap = canvas.parentElement;
+  let _overlay = canvas._overlay;
+  if (!_overlay) {
+    _overlay = document.createElement('canvas');
+    _overlay.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    if (_wrap && _wrap.style) _wrap.style.position = 'relative';
+    if (_wrap) _wrap.appendChild(_overlay);
+    canvas._overlay = _overlay;
+  }
+  _overlay.width  = canvas.width;
+  _overlay.height = canvas.height;
+  _overlay.style.width  = W + 'px';
+  _overlay.style.height = H + 'px';
+  chartRegistry[id] = { datasets, opts, pad, cW, cH, W, H, maxY, tsLabels, yUnit, dpr, overlay: _overlay };
+
+  // hover is handled by the global two-pass document listener below
+}
+
+const _hoverChartIds = ['respTimeChart','errorChart','tpsChart'];
+let _activeHoverChart = null;
+document.addEventListener('mousemove', e => {
+  if (!allRows.length) return;
+  const mx = e.clientX, my = e.clientY;
+
+  // PASS 1: strict box hit — always wins, no expansion
+  let hoveredId = null;
+  for (const id of _hoverChartIds) {
+    const canvas = document.getElementById(id);
+    if (!canvas) continue;
+    const br = (canvas.closest('.chart-box') || canvas.parentElement).getBoundingClientRect();
+    if (mx >= br.left && mx <= br.right && my >= br.top && my <= br.bottom) {
+      hoveredId = id;
+      break;
+    }
+  }
+
+  // PASS 2: if nothing matched strictly, check if mouse is over the active tooltip
+  if (!hoveredId && _activeHoverChart) {
+    const tip = document.getElementById(_activeHoverChart.replace('Chart','Tooltip'));
+    if (tip && tip.classList.contains('visible')) {
+      const tr = tip.getBoundingClientRect();
+      if (mx >= tr.left && mx <= tr.right && my >= tr.top && my <= tr.bottom) {
+        hoveredId = _activeHoverChart;
+      }
+    }
+  }
+
+  if (hoveredId) {
+    if (_activeHoverChart && _activeHoverChart !== hoveredId) onChartLeave(_activeHoverChart);
+    _activeHoverChart = hoveredId;
+    onChartHover(e, hoveredId);
+  } else {
+    if (_activeHoverChart) { onChartLeave(_activeHoverChart); _activeHoverChart = null; }
+  }
+});
+
+// ─── Hover Handler ────────────────────────────────────────────────────────────
+function onChartHover(e, id) {
+  const reg = chartRegistry[id];
+  if (!reg) return;
+  const canvas  = document.getElementById(id);
+  const tooltip = document.getElementById(id.replace('Chart','Tooltip').replace('chart','Tooltip'));
+  if (!tooltip) return;
+
+  const rect    = canvas.getBoundingClientRect();
+  const mouseX  = e.clientX - rect.left;  // CSS pixels — pad/cW are also CSS pixels
+  const { pad, cW, datasets, tsLabels, yUnit, maxY, H } = reg;
+
+  const n        = datasets.find(d => d.data?.length)?.data.length || 0;
+  if (n < 2) return;
+  const step     = cW / (n - 1);
+  const bucketIdx = Math.max(0, Math.min(n - 1, Math.round((mouseX - pad.l) / step)));
+
+  // Build tooltip content
+  const timeLabel = tsLabels[bucketIdx] || `T+${bucketIdx}`;
+  let rows = '';
+  const seriesNames = {
+    respTimeChart: ['Avg','P95','Min'],
+    errorChart:    ['Err Rate'],
+    tpsChart:      ['Throughput'],
+  };
+  const names = seriesNames[id] || datasets.map((_,i)=>`Series ${i+1}`);
+
+  datasets.forEach(({ data, color }, i) => {
+    if (!data?.[bucketIdx] && data?.[bucketIdx] !== 0) return;
+    const raw = data[bucketIdx];
+    const cc  = getComputedColor(color);
+    let valStr;
+    if (yUnit === 'ms' || id === 'respTimeChart') valStr = raw >= 1000 ? (raw/1000).toFixed(2)+'s' : Math.round(raw)+'ms';
+    else if (yUnit === '%') valStr = raw.toFixed(2)+'%';
+    else if (yUnit === '/s') valStr = raw.toFixed(1)+' req/s';
+    else valStr = Math.round(raw)+'';
+    rows += `<div class="ct-row">
+      <div class="ct-dot" style="background:${cc}"></div>
+      <span class="ct-label">${names[i] || 'Value'}</span>
+      <span class="ct-val" style="color:${cc}">${valStr}</span>
+    </div>`;
+  });
+
+  tooltip.innerHTML = `<div class="ct-time">⏱ ${timeLabel}</div>${rows}`;
+  tooltip.classList.add('visible');
+
+  // Position tooltip — flip above mouse when near bottom to avoid overflow
+  const wrap       = canvas.parentElement;
+  const wrapW      = wrap.offsetWidth;
+  const tipW       = 165;
+  const tipH       = 90;
+  const wrapRect   = wrap.getBoundingClientRect();
+  const relX       = e.clientX - wrapRect.left;
+  const relY       = e.clientY - wrapRect.top;
+  const tipLeft    = relX + tipW + 12 > wrapW ? relX - tipW - 6 : relX + 12;
+  const canvasH    = parseInt(canvas.dataset.h) || 150;
+  const tipTop     = relY > canvasH * 0.6 ? relY - tipH - 10 : relY - 10;
+  tooltip.style.left = tipLeft + 'px';
+  tooltip.style.top  = Math.max(0, tipTop) + 'px';
+
+  // Draw crosshair on canvas
+  drawCrosshair(id, bucketIdx);
+}
+
+function onChartLeave(id) {
+  const tooltip = document.getElementById(id.replace('Chart','Tooltip').replace('chart','Tooltip'));
+  if (tooltip) tooltip.classList.remove('visible');
+  const reg = chartRegistry[id];
+  if (reg?.overlay) {
+    const ctx = reg.overlay.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, reg.overlay.width, reg.overlay.height);
+  }
+}
+
+function drawCrosshair(id, bucketIdx) {
+  const reg = chartRegistry[id];
+  if (!reg?.overlay) return;
+  const { pad, cW, cH, datasets, maxY, dpr, overlay } = reg;
+  const d = dpr || 1;
+  const n = datasets.find(ds => ds.data?.length)?.data.length || 0;
+  if (n < 2) return;
+
+  // Draw ONLY on the transparent overlay — chart canvas is never touched
+  const ctx = overlay.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.setLineDash([]);
+
+  const step = cW / (n - 1);
+  const x    = pad.l + Math.max(0, Math.min(n - 1, bucketIdx)) * step;
+
+  ctx.strokeStyle = getComputedColor('var(--muted)');
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + cH); ctx.stroke();
+  ctx.setLineDash([]);
+
+  datasets.forEach(({ data, color }) => {
+    const idx = Math.max(0, Math.min(n - 1, bucketIdx));
+    if (data?.[idx] == null) return;
+    const y  = pad.t + cH - (Math.min(Math.max(data[idx], 0), maxY) / maxY) * cH;
+    const cc = getComputedColor(color);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = cc; ctx.fill();
+    ctx.strokeStyle = getComputedColor('var(--s1)'); ctx.lineWidth = 2; ctx.stroke();
+  });
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function drawBarChart(id, data, labels, colors, multiColor=false) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof canvas.getContext !== 'function') return;
+  const dpr = window.devicePixelRatio || 1;
+  const _box3 = (canvas.closest ? canvas.closest('.chart-box') : null) || canvas.parentElement;
+  const _cs3  = _box3 && window.getComputedStyle ? window.getComputedStyle(_box3) : {};
+  const W = Math.round((_box3 ? _box3.offsetWidth : 0) - parseFloat(_cs3.paddingLeft||'0') - parseFloat(_cs3.paddingRight||'0')) || 400;
+  const H = parseInt(canvas.dataset.lh || (canvas.dataset.lh = String(canvas.height || 110))) || 110;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = false;
+  ctx.setLineDash([]);
+  ctx.clearRect(0, 0, W, H);
+
+  const maxV = Math.max(...data) || 1;
+  const pad = {t:6,b:22,l:4,r:4};
+  const cW = W-pad.l-pad.r, cH = H-pad.t-pad.b;
+  const barW = (cW/data.length)*0.7;
+  const gap = (cW/data.length)*0.3;
+
+  data.forEach((v,i) => {
+    const x = pad.l + i*(barW+gap) + gap/2;
+    const bH = (v/maxV)*cH;
+    const y = pad.t+cH-bH;
+    const color = multiColor ? (Array.isArray(colors) ? colors[i] : colors) : colors;
+    ctx.fillStyle = getComputedColor(color)+'bb';
+    ctx.fillRect(x,y,barW,bH);
+
+    if (labels[i]) {
+      ctx.fillStyle = '#4a6070';
+      ctx.font='600 10px "Fira Code", monospace';
+      ctx.textAlign='center';
+      ctx.fillText(labels[i], x+barW/2, H-4);
+    }
+  });
+}
+
+function getComputedColor(cssVar) {
+  if (!cssVar.startsWith('var(')) return cssVar;
+  const prop = cssVar.slice(4,-1);
+  return getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
+}
+
+// ─── Demo Data ────────────────────────────────────────────────────────────────
+function loadDemoData() {
+  const labels = ['GET /api/users','POST /api/login','GET /api/products','PUT /api/cart','DELETE /api/session','GET /api/orders','POST /api/checkout'];
+  const rows = [];
+  const baseTs = Date.now() - 300000;
+
+  for (let i=0; i<1200; i++) {
+    const label = labels[Math.floor(Math.random()*labels.length)];
+    const baseResp = {
+      'GET /api/users':120,'POST /api/login':250,'GET /api/products':180,
+      'PUT /api/cart':300,'DELETE /api/session':80,'GET /api/orders':400,'POST /api/checkout':650
+    }[label];
+    const spike = i > 600 && i < 750;
+    const elapsed = Math.max(10, Math.round(baseResp * (spike?3.5:1) + (Math.random()-0.4)*baseResp*0.5));
+    const success = Math.random() > (spike ? 0.12 : 0.01);
+    const errCode = Math.random()>0.5?'500':Math.random()>0.5?'503':Math.random()>0.5?'404':'400';
+    const errMsgs = {
+      '500': ['Internal Server Error: NullPointerException at UserService.java:142','Database connection pool exhausted after 30s timeout','Unhandled exception in OrderController.processPayment()'],
+      '503': ['Service Unavailable: upstream connect error or disconnect/reset before headers','Circuit breaker OPEN for downstream inventory-service','Max retries exceeded connecting to auth-service:8080'],
+      '404': ['Not Found: /api/users/{id} — resource does not exist','Endpoint deprecated: use /api/v2/products instead','User session expired or token invalid'],
+      '400': ['Bad Request: missing required field "userId" in request body','Validation failed: email format invalid','Request body exceeds maximum size of 1MB'],
+    };
+    const traceId = success ? null : 'trace-' + Math.random().toString(36).substr(2,8).toUpperCase() + '-' + Math.random().toString(36).substr(2,4).toUpperCase();
+    const spanId  = success ? null : Math.random().toString(36).substr(2,16).toUpperCase();
+    const msgList = errMsgs[errCode] || ['Unknown error'];
+    rows.push({
+      ts: baseTs + i*250 + Math.round(Math.random()*100),
+      elapsed, label, success,
+      code: success ? (Math.random()>0.95?'201':Math.random()>0.9?'204':'200') : errCode,
+      bytes: Math.round(1200 + Math.random()*3000),
+      latency: Math.round(elapsed * 0.7),
+      errMsg: success ? null : msgList[Math.floor(Math.random()*msgList.length)],
+      traceId,
+      spanId,
+      thread: 'Thread Group 1-' + (Math.floor(Math.random()*50)+1),
+    });
+  }
+
+  allRows = rows;
+  document.getElementById('fileNameTag').textContent = 'demo-results.jtl';
+  document.getElementById('sampleCount').textContent = rows.length.toLocaleString() + ' samples';
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('mainHeader').style.display = 'flex';
+  document.getElementById('mainDash').style.display = 'flex';
+  computeAndRender();
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+function exportSummary() {
+  const lines = ['Label,Count,Avg(ms),Min,Max,P90,StdDev,Error%,TPS'];
+  labelStats.forEach(r => {
+    lines.push(`${r.label},${r.count},${r.avg},${r.min},${r.max},${r.p90},${r.stddev},${r.err.toFixed(2)},${r.tps}`);
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'jmeter-summary.csv';
+  a.click();
+}
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+const fmtMs = v => v >= 1000 ? (v/1000).toFixed(1)+'s' : Math.round(v)+'ms';
+const fmtBytes = v => v > 1048576 ? (v/1048576).toFixed(1)+'MB' : v > 1024 ? (v/1024).toFixed(1)+'KB' : v+'B';
+const fmtDuration = s => s >= 60 ? `${Math.floor(s/60)}m ${Math.round(s%60)}s` : `${Math.round(s)}s`;
+function setText(id, val) { const e=document.getElementById(id); if(e) e.textContent=val; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+window.addEventListener('resize', () => { if (allRows.length) computeAndRender(); });
+
+// ─── Slowest Transactions ─────────────────────────────────────────────────────
+function renderSlowestTransactions(labelStats, durationSec) {
+  const medals = ['🥇','🥈','🥉','4','5','6'];
+  const sorted = [...labelStats].sort((a,b) => b.p90 - a.p90).slice(0,6);
+  const maxP90 = sorted[0]?.p90 || 1;
+
+  const grid = document.getElementById('slowGrid');
+  if (!grid) return;
+
+  grid.innerHTML = sorted.map((r, i) => {
+    const p95Color = r.p90 > 3000 ? 'var(--red)' : r.p90 > 1000 ? 'var(--yellow)' : 'var(--blue)';
+    const avgColor = r.avg > 2000 ? 'var(--red)' : r.avg > 800 ? 'var(--yellow)' : 'var(--green)';
+    const errColor = r.err > 5 ? 'var(--red)' : r.err > 1 ? 'var(--yellow)' : 'var(--green)';
+    const p90Pct = Math.round((r.p90 / maxP90) * 100);
+    const avgPct = Math.round((r.avg / maxP90) * 100);
+    return `
+    <div class="slow-card">
+      <div class="slow-rank">
+        <span>RANK #${i+1}</span>
+        <span class="slow-medal">${medals[i]}</span>
+      </div>
+      <div class="slow-label" title="${escHtml(r.label)}">${escHtml(r.label)}</div>
+      <div class="slow-metrics">
+        <div class="slow-metric-row">
+          <span class="slow-metric-name">P90</span>
+          <div class="slow-metric-track"><div class="slow-metric-fill" style="width:${p90Pct}%;background:${p95Color}"></div></div>
+          <span class="slow-metric-val" style="color:${p95Color}">${fmtMs(r.p90)}</span>
+        </div>
+        <div class="slow-metric-row">
+          <span class="slow-metric-name">AVG</span>
+          <div class="slow-metric-track"><div class="slow-metric-fill" style="width:${avgPct}%;background:${avgColor}"></div></div>
+          <span class="slow-metric-val" style="color:${avgColor}">${fmtMs(r.avg)}</span>
+        </div>
+        <div class="slow-metric-row">
+          <span class="slow-metric-name">MAX</span>
+          <div class="slow-metric-track"><div class="slow-metric-fill" style="width:${Math.round((r.max/maxP90)*100)}%;background:var(--red)"></div></div>
+          <span class="slow-metric-val" style="color:var(--red)">${fmtMs(r.max)}</span>
+        </div>
+      </div>
+      <div class="slow-card-footer">
+        <div class="slow-foot-item">ERR <span style="color:${errColor}">${r.err.toFixed(1)}%</span></div>
+        <div class="slow-foot-item">TPS <span style="color:var(--blue)">${r.tps}</span></div>
+        <div class="slow-foot-item">N <span style="color:var(--muted)">${r.count.toLocaleString()}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── HTTP Status Breakdown ─────────────────────────────────────────────────────
+function renderStatusBreakdown(rows) {
+  const codeMap = {};
+  rows.forEach(r => {
+    const code = r.code || (r.success ? '200' : '500');
+    codeMap[code] = (codeMap[code] || 0) + 1;
+  });
+
+  const total = rows.length;
+  const statusColors = {
+    '200':'#00d97e','201':'#00d97e','204':'#00d97e',
+    '301':'#38b6ff','302':'#38b6ff','304':'#38b6ff',
+    '400':'#ffd166','401':'#ffd166','403':'#fb923c','404':'#fb923c',
+    '429':'#fb923c','500':'#ff4560','502':'#ff4560','503':'#ff4560','504':'#ff4560',
+  };
+  const groupColors = { '2':'#00d97e','3':'#38b6ff','4':'#ffd166','5':'#ff4560','?':'#c084fc' };
+
+  // Group for donut
+  const groups = {'2xx':0,'3xx':0,'4xx':0,'5xx':0,'Other':0};
+  const groupColArr = ['#00d97e','#38b6ff','#ffd166','#ff4560','#c084fc'];
+  Object.entries(codeMap).forEach(([code, cnt]) => {
+    if (code.startsWith('2')) groups['2xx'] += cnt;
+    else if (code.startsWith('3')) groups['3xx'] += cnt;
+    else if (code.startsWith('4')) groups['4xx'] += cnt;
+    else if (code.startsWith('5')) groups['5xx'] += cnt;
+    else groups['Other'] += cnt;
+  });
+
+  // Draw donut
+  const canvas = document.getElementById('donutChart');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,180,180);
+    const cx=90,cy=90,r=76,inner=50;
+    let angle = -Math.PI/2;
+    const entries = Object.entries(groups).filter(([,v])=>v>0);
+    entries.forEach(([,cnt],i) => {
+      const slice = (cnt/total)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,r,angle,angle+slice);
+      ctx.closePath();
+      ctx.fillStyle = groupColArr[Object.keys(groups).indexOf(Object.keys(groups).find(k=>groups[k]===cnt && !Object.keys(groups).slice(0,i).some(pk=>groups[pk]===cnt)))] || groupColArr[i];
+      // simpler color assignment
+      const gkeys = Object.keys(groups);
+      ctx.fillStyle = groupColArr[gkeys.indexOf(entries[i][0])];
+      ctx.fill();
+      angle += slice;
+    });
+    // Donut hole
+    ctx.beginPath();
+    ctx.arc(cx,cy,inner,0,Math.PI*2);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--s1').trim() || '#0d1117';
+    ctx.fill();
+
+    const donutTotalEl = document.getElementById('donutTotal');
+    const totalStr = total.toLocaleString();
+    donutTotalEl.textContent = totalStr;
+    // Auto-fit: shrink font size based on character count so it never overflows
+    const charCount = totalStr.replace(/[,. ]/g, '').length; // digits only
+    const fontSize = charCount <= 5 ? 18
+                   : charCount <= 6 ? 15
+                   : charCount <= 7 ? 13
+                   : charCount <= 8 ? 11
+                   : 9;
+    donutTotalEl.style.fontSize = fontSize + 'px';
+  }
+
+  // Donut legend
+  const legend = document.getElementById('donutLegend');
+  if (legend) {
+    const gkeys = Object.keys(groups);
+    legend.innerHTML = gkeys.filter(k=>groups[k]>0).map((k,i) => {
+      const cnt = groups[k];
+      const pct = ((cnt/total)*100).toFixed(1);
+      return `<div class="donut-leg-item">
+        <div class="donut-leg-swatch" style="background:${groupColArr[gkeys.indexOf(k)]}"></div>
+        <span class="donut-leg-label">${k}</span>
+        <span class="donut-leg-count">${cnt.toLocaleString()}</span>
+        <span class="donut-leg-pct" style="color:${groupColArr[gkeys.indexOf(k)]}">${pct}%</span>
+      </div>`;
+    }).join('');
+
+    const summary = document.getElementById('donutSummary');
+    if (summary) {
+      const passCount = groups['2xx'] || 0;
+      const failCount = total - passCount;
+      const errRate   = total > 0 ? ((failCount/total)*100).toFixed(1) : '0.0';
+      const passRate  = total > 0 ? ((passCount/total)*100).toFixed(1) : '0.0';
+      const eColor    = parseFloat(errRate) < 1 ? 'var(--green)' : parseFloat(errRate) < 5 ? 'var(--yellow)' : 'var(--red)';
+      summary.innerHTML =
+        `<div class="donut-stat"><span class="donut-stat-val" style="color:var(--green)">${passCount.toLocaleString()}</span><span class="donut-stat-lbl">Passed</span></div>` +
+        `<div class="donut-stat"><span class="donut-stat-val" style="color:var(--red)">${failCount.toLocaleString()}</span><span class="donut-stat-lbl">Failed</span></div>` +
+        `<div class="donut-stat"><span class="donut-stat-val" style="color:${eColor}">${errRate}%</span><span class="donut-stat-lbl">Error Rate</span></div>` +
+        `<div class="donut-stat"><span class="donut-stat-val" style="color:var(--blue)">${passRate}%</span><span class="donut-stat-lbl">Pass Rate</span></div>`;
+    }
+  }
+
+  // Status bar list (individual codes sorted by count)
+  const barList = document.getElementById('statusBarList');
+  if (barList) {
+    const sorted = Object.entries(codeMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const maxCnt = sorted[0]?.[1] || 1;
+    barList.innerHTML = sorted.map(([code, cnt]) => {
+      const pct = ((cnt/total)*100).toFixed(1);
+      const barW = Math.round((cnt/maxCnt)*100);
+      const color = statusColors[code] || (code.startsWith('2')?'#00d97e':code.startsWith('3')?'#38b6ff':code.startsWith('4')?'#ffd166':'#ff4560');
+      const label = {'200':'OK','201':'Created','204':'No Content','301':'Moved','302':'Found',
+        '304':'Not Modified','400':'Bad Request','401':'Unauthorized','403':'Forbidden',
+        '404':'Not Found','429':'Too Many Req','500':'Server Error','502':'Bad Gateway',
+        '503':'Unavailable','504':'Gateway Timeout'}[code] || 'Response';
+      return `<div class="status-bar-item">
+        <div class="status-bar-top">
+          <span class="status-bar-code" style="color:${color}">${code} <span style="font-weight:300;color:var(--muted)">${label}</span></span>
+          <span class="status-bar-meta">${cnt.toLocaleString()} &nbsp;·&nbsp; ${pct}%</span>
+        </div>
+        <div class="status-bar-track">
+          <div class="status-bar-fill" style="width:${barW}%;background:${color}88"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── Run Timeline ─────────────────────────────────────────────────────────────
+function renderRunTimeline(minTs, maxTs, durationSec, rows) {
+  const fmtDateTime = ts => {
+    const d = new Date(ts);
+    const date = d.toLocaleDateString(undefined, {year:'numeric',month:'short',day:'2-digit'});
+    const time = d.toLocaleTimeString(undefined, {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+    return { date, time };
+  };
+
+  const start = fmtDateTime(minTs);
+  const end   = fmtDateTime(maxTs);
+
+  const _s = document.getElementById('rtlStart');
+  if (_s) { _s.textContent = start.time;
+    const _sd = document.createElement('span'); _sd.className='rtl-date'; _sd.textContent=start.date;
+    _s.appendChild(_sd); }
+  const _e = document.getElementById('rtlEnd');
+  if (_e) { _e.textContent = end.time;
+    const _ed = document.createElement('span'); _ed.className='rtl-date'; _ed.textContent=end.date;
+    _e.appendChild(_ed); }
+  document.getElementById('rtlBarStart').textContent = start.time;
+  document.getElementById('rtlBarEnd').textContent   = end.time;
+  document.getElementById('rtlBarDuration').textContent = fmtDuration(durationSec);
+
+  const fill  = document.getElementById('rtlBarFill');
+  const track = document.getElementById('rtlBarTrack');
+  if (!fill || !track) return;
+
+  // Clear previous ticks
+  track.querySelectorAll('.rtl-tick').forEach(el => el.remove());
+
+  if (rows && rows.length) {
+    const span     = maxTs - minTs || 1;
+    const failures = rows.filter(r => !r.success);
+    const totalErr = failures.length;
+    const errRate  = totalErr / rows.length;
+
+    // Base bar stays green — it represents time passing, not error rate
+    fill.style.background = 'var(--green)';
+    fill.style.animation = 'none';
+    fill.offsetHeight;
+    fill.style.animation = '';
+
+    // Bucket failures into pixel-width columns (1 column = 1px of bar width)
+    // Each column accumulates failures; opacity scales with local error density
+    if (totalErr > 0 && document.createDocumentFragment) {
+      const COLS = 200; // virtual columns across the bar
+      const cols = new Float32Array(COLS); // failure count per column
+      const colTotal = new Float32Array(COLS); // total requests per column
+
+      rows.forEach(r => {
+        const idx = Math.min(COLS - 1, Math.floor(((r.ts - minTs) / span) * COLS));
+        colTotal[idx]++;
+        if (!r.success) cols[idx]++;
+      });
+
+      // Find the max local error rate across all columns (for scaling)
+      // This makes the highest-error column = full opacity red
+      let maxLocalRate = 0;
+      for (let i = 0; i < COLS; i++) {
+        if (colTotal[i] > 0) maxLocalRate = Math.max(maxLocalRate, cols[i] / colTotal[i]);
+      }
+      // Never let very low overall error rate make marks invisible —
+      // use the higher of (actual max local rate) or (2x overall error rate)
+      // so at 2.8% errors, worst column might show at meaningful opacity
+      const scaleBase = Math.max(maxLocalRate, errRate * 2, 0.05);
+
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < COLS; i++) {
+        if (cols[i] === 0) continue;
+        const localRate = colTotal[i] > 0 ? cols[i] / colTotal[i] : 0;
+        // Opacity: scaled so the worst column = 0.9, pure 0% = 0
+        const opacity = Math.min(0.9, (localRate / scaleBase) * 0.9);
+        const tick = document.createElement('div');
+        tick.className = 'rtl-tick';
+        tick.style.left    = ((i / COLS) * 100).toFixed(2) + '%';
+        tick.style.width   = (100 / COLS).toFixed(3) + '%';
+        tick.style.opacity = opacity.toFixed(3);
+        frag.appendChild(tick);
+      }
+      track.appendChild(frag);
+    }
+
+    track.title = `${rows.length.toLocaleString()} samples  ·  ✓ ${(rows.length - totalErr).toLocaleString()} passed  ·  ✗ ${totalErr.toLocaleString()} failed  ·  ${(errRate*100).toFixed(1)}% error rate`;
+  } else {
+    fill.style.background = 'var(--green)';
+    fill.style.animation = 'none';
+    fill.offsetHeight;
+    fill.style.animation = '';
+  }
+
+  const ts = document.getElementById('printTimestamp');
+  if (ts) {
+    ts.textContent =
+      'Test Run: ' + start.date + ' ' + start.time +
+      ' → ' + end.date + ' ' + end.time +
+      '  |  Duration: ' + fmtDuration(durationSec) +
+      '  |  File: ' + document.getElementById('fileNameTag').textContent +
+      '  |  Samples: ' + document.getElementById('sampleCount').textContent;
+  }
+}
+
+// ─── PDF Export ───────────────────────────────────────────────────────────────
+function showPdfModal() {
+  if (!allRows.length) { alert('Load data first before exporting PDF.'); return; }
+  document.getElementById('pdfOverlay').classList.add('show');
+}
+
+function closePdfModal() {
+  document.getElementById('pdfOverlay').classList.remove('show');
+  document.getElementById('pdfProgress').classList.remove('show');
+}
+
+function executePdfExport() {
+  const prog = document.getElementById('pdfProgress');
+  prog.classList.add('show');
+  prog.textContent = 'Preparing layout…';
+
+  // Set print timestamp
+  const now = new Date();
+  document.getElementById('printTimestamp').textContent =
+    'Generated: ' + now.toLocaleDateString() + ' ' + now.toLocaleTimeString() +
+    '  |  File: ' + (document.getElementById('fileNameTag').textContent) +
+    '  |  Samples: ' + (document.getElementById('sampleCount').textContent);
+
+  // Expand table to show all rows for PDF
+  const savedPage = page;
+
+  // Show/hide sections based on options
+  const sectionMap = [
+    ['pdfOptSummary', '.summary-strip'],
+    ['pdfOptCharts',  '.charts-grid'],
+    ['pdfOptSlowest', '#slowGrid'],
+    ['pdfOptStatus',  '.status-row'],
+    ['pdfOptTable',   '.table-box'],
+  ];
+
+  const hiddenEls = [];
+  sectionMap.forEach(([optId, sel]) => {
+    const checked = document.getElementById(optId).checked;
+    if (!checked) {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.setProperty('display','none','important');
+        hiddenEls.push(el);
+      });
+    }
+  });
+
+  // Expand table: show ALL rows
+  if (document.getElementById('pdfOptTable').checked) {
+    page = 0;
+    // Render all rows for PDF export
+    const body = document.getElementById('breakdownBody');
+    const maxResp = Math.max(...filteredRows.map(r=>r.max));
+    body.innerHTML = filteredRows.map(r => renderTableRow(r, maxResp)).join('');
+  }
+
+  // Close modal and trigger print
+  closePdfModal();
+
+  setTimeout(() => {
+    prog.textContent = 'Opening print dialog…';
+    window.print();
+
+    // Restore after print dialog closes
+    setTimeout(() => {
+      hiddenEls.forEach(el => el.style.removeProperty('display'));
+      page = savedPage;
+      renderTable();
+    }, 1000);
+  }, 300);
+}
+
+// ─── Request Log Viewer ───────────────────────────────────────────────────────
+let logRows       = [];
+let logFiltered   = [];
+let logPage       = 0;
+let logSortKey    = 'ts';
+let logSortDir    = 1;
+let logStatusFilt = 'all';
+const LOG_PER_PAGE = 50;
+
+function showLogViewer() {
+  document.getElementById('logViewerOverlay').classList.add('show');
+}
+function closeLogViewer() {
+  document.getElementById('logViewerOverlay').classList.remove('show');
+}
+
+// Drop zone wiring
+const logDZ = document.getElementById('logDropZone');
+if (logDZ) {
+  logDZ.addEventListener('dragover', e => { e.preventDefault(); logDZ.classList.add('dragover'); });
+  logDZ.addEventListener('dragleave', () => logDZ.classList.remove('dragover'));
+  logDZ.addEventListener('drop', e => {
+    e.preventDefault(); logDZ.classList.remove('dragover');
+    handleLogFile(e.dataTransfer.files[0]);
+  });
+}
+
+function handleLogFile(file) {
+  if (!file) return;
+  const wrap  = document.getElementById('logProgressWrap');
+  const bar   = document.getElementById('logProgressBar');
+  const label = document.getElementById('logProgressLabel');
+  if (wrap)  wrap.style.display  = 'block';
+  if (bar)   bar.style.width     = '0%';
+  if (label) label.textContent   = 'Reading file…';
+
+  const reader = new FileReader();
+
+  reader.onprogress = e => {
+    if (e.lengthComputable && bar) {
+      bar.style.width = Math.round((e.loaded / e.total) * 40) + '%';
+    }
+  };
+
+  reader.onload = e => {
+    if (bar)   bar.style.width   = '45%';
+    if (label) label.textContent = 'Parsing…';
+    // Yield to browser to paint the bar before the synchronous parse
+    setTimeout(() => parseLogCSV(e.target.result, file.name), 16);
+  };
+
+  reader.onerror = () => {
+    if (wrap)  wrap.style.display = 'none';
+    alert('Could not read file.');
+  };
+
+  reader.readAsText(file);
+}
+
+function showLogDropZone() {
+  document.getElementById('logDropSection').style.display = 'block';
+  document.getElementById('logContent').style.display = 'none';
+}
+
+// ── Parse ────────────────────────────────────────────────────────────────────
+function splitRFC4180Lines(src) {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (ch === '"') {
+        // RFC4180: "" inside quotes = escaped quote
+        if (inQ && src[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; cur += ch; }
+      } else if (ch === '\n' && !inQ) {
+        out.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    if (cur.trim()) out.push(cur);
+    return out;
+  }
+
+function parseLogCSV(text, filename) {
+  // ── RFC4180-safe line splitting ────────────────────────────────────────────
+  // text.split('\n') breaks quoted fields that contain newlines (e.g. responseHeaders).
+  // Instead: scan char-by-char, only split on \n when NOT inside a quoted field.
+
+  const lines = splitRFC4180Lines(text);
+  if (lines.length < 2) { alert('File appears empty.'); return; }
+
+  // ── Detect format ──────────────────────────────────────────────────────────
+  const firstLine = lines[0].trim();
+  const isPipe    = firstLine.includes('|');
+  const sep       = isPipe ? '|' : (firstLine.includes('\t') ? '\t' : ',');
+  const headers   = firstLine.split(sep).map(h => h.trim().toLowerCase()
+                      .replace(/\s+/g,'').replace(/"/g,''));
+
+  // Map your exact column names → internal fields
+  const colMap = {
+    // Your exact format
+    'requestname':       'label',
+    'wkn':               'wkn',
+    'responsecode':      'code',
+    'responsemessage':   'responseMsg',
+    'starttime':         'startTime',
+    'requestmessage':    'requestBody',
+    // "Response Message" appears twice in your header — second one is response body
+    // We handle this by position (col 6 = request, col 7+ = response)
+    // Standard JMeter fallbacks
+    'timestamp':         'ts',
+    'elapsed':           'elapsed',
+    'label':             'label',
+    'threadname':        'thread',
+    'datatype':          'dataType',
+    'success':           'success',
+    'failuremessage':    'failureMsg',
+    'bytes':             'bytes',
+    'sentbytes':         'sentBytes',
+    'grpthreads':        'grpThreads',
+    'allthreads':        'allThreads',
+    'url':               'url',
+    'latency':           'latency',
+    'idletime':          'idleTime',
+    'connect':           'connect',
+  };
+
+  // Build column index
+  const idx = {};
+  headers.forEach((h, i) => {
+    const mapped = colMap[h];
+    if (mapped && idx[mapped] === undefined) idx[mapped] = i;
+  });
+  // For your format: if 'responsemessage' appears twice, second is responseBody
+  const allColNorm = headers.map(h => h.trim().toLowerCase().replace(/\s+/g,''));
+  const firstRespMsg = allColNorm.indexOf('responsemessage');
+  const lastRespMsg  = allColNorm.lastIndexOf('responsemessage');
+  if (firstRespMsg !== lastRespMsg) {
+    idx['responseMsg']  = firstRespMsg;
+    idx['responseBody'] = lastRespMsg;
+  }
+
+  const isYourFormat = idx['label'] !== undefined &&
+    (idx['startTime'] !== undefined || idx['wkn'] !== undefined);
+
+  // ── Smart row reconstruction ───────────────────────────────────────────────
+  // Your file has multiline JSON in cols 6+, so we can't naively split on 
+
+  // Strategy: a new data row starts with a value in col 0 that matches the
+  // pattern of your request names (not a JSON line, not empty)
+  // We'll join continuation lines back onto the previous row.
+
+  const isNewRow = (line) => {
+    if (!line.trim()) return false;
+    if (line.startsWith('{') || line.startsWith('"') || line.startsWith('}')
+        || line.startsWith('[') || line.startsWith(']') || line.startsWith(',')) return false;
+    // Must have at least 3 pipe separators to be a real data row
+    if (isPipe && (line.match(/\|/g)||[]).length < 3) return false;
+    return true;
+  };
+
+  // Reconstruct logical rows (handles multiline JSON in last columns)
+  const rawRows = [];
+  let current = null;
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    if (isNewRow(line)) {
+      if (current !== null) rawRows.push(current);
+      current = line;
+    } else {
+      if (current !== null) current += '\n' + line;
+    }
+  }
+  if (current !== null) rawRows.push(current);
+
+  // ── Parse each reconstructed row ──────────────────────────────────────────
+  logRows = [];
+  rawRows.forEach((raw, rowNum) => {
+    try {
+      // Split only on the separator at the top level (not inside JSON)
+      // For pipe: split carefully since JSON won't contain bare pipes
+      const cols = isPipe ? raw.split('|') : smartSplitCSV(raw, sep);
+
+      const get = (field, fb='') => {
+        const fi = idx[field];
+        return (fi !== undefined && fi < cols.length)
+          ? cols[fi].trim().replace(/^"|"$/g,'')
+          : fb;
+      };
+
+      // For your format the last 2 fields are multiline — join everything from col 5 onward
+      let requestBody  = '';
+      let responseBody = '';
+      if (isYourFormat && cols.length >= 6) {
+        // col 5 = request body (everything up to a midpoint), col 6+ = response
+        // Since it's pipe-split, col5 = request message, col6 = response message
+        requestBody  = (cols[5] || '').trim();
+        responseBody = cols.slice(6).join('|').trim();
+      }
+
+      // Parse start time: "2026-03-05 11:52:44 CET" → ms
+      const rawTs   = get('startTime') || get('ts') || '';
+      let tsMs = 0;
+      if (rawTs) {
+        // Strip timezone abbreviation for Date parsing (CET, EST etc)
+        const cleaned = rawTs.replace(/\s+[A-Z]{2,4}$/, '');
+        tsMs = new Date(cleaned).getTime();
+        if (isNaN(tsMs)) tsMs = parseInt(rawTs) || 0;
+      }
+
+      // Response code
+      const code = get('code', '');
+      // Infer success from code if no explicit success column
+      let success;
+      if (idx['success'] !== undefined) {
+        success = get('success','true').toLowerCase() === 'true';
+      } else {
+        success = code.startsWith('2') || code.startsWith('3');
+      }
+
+      // Pretty-print JSON bodies if valid
+      const prettyJSON = (str) => {
+        if (!str) return '';
+        try { return JSON.stringify(JSON.parse(str), null, 2); }
+        catch { return str; }
+      };
+
+      logRows.push({
+        ts:           tsMs,
+        tsRaw:        rawTs,
+        label:        get('label') || `Row ${rowNum+1}`,
+        wkn:          get('wkn'),
+        code,
+        responseMsg:  get('responseMsg'),
+        responseBody: prettyJSON(responseBody || get('responseBody', '')),
+        requestBody:  prettyJSON(requestBody  || get('requestBody', '')),
+        thread:       get('thread'),
+        dataType:     get('dataType'),
+        success,
+        failureMsg:   get('failureMsg'),
+        elapsed:      parseInt(get('elapsed','0')) || 0,
+        bytes:        parseInt(get('bytes','0'))   || 0,
+        sentBytes:    parseInt(get('sentBytes','0'))|| 0,
+        latency:      parseInt(get('latency','0')) || 0,
+        connect:      parseInt(get('connect','0')) || 0,
+        url:          get('url'),
+      });
+    } catch(e){ /* parse error suppressed */ }
+  });
+
+  if (!logRows.length) { alert('No rows parsed. Check column headers.'); return; }
+
+  document.getElementById('logFileLabel').textContent = filename;
+  document.getElementById('logModalBadge').textContent = logRows.length.toLocaleString() + ' rows';
+
+  // Finish the progress bar
+  const _lpb = document.getElementById('logProgressBar');
+  const _lpl = document.getElementById('logProgressLabel');
+  if (_lpb) _lpb.style.width = '100%';
+  if (_lpl) _lpl.textContent = logRows.length.toLocaleString() + ' rows parsed';
+
+  // Brief pause so user sees 100% before the view switches
+  setTimeout(() => {
+    const _lpw = document.getElementById('logProgressWrap');
+    if (_lpw) _lpw.style.display = 'none';
+    if (_lpb) _lpb.style.width   = '0%';
+    document.getElementById('logDropSection').style.display = 'none';
+    const contentEl = document.getElementById('logContent');
+    contentEl.style.display = 'flex';
+
+    // Use rAF so the browser paints the flex layout before we write table rows into it.
+    // Without this, logTableBody has zero dimensions and the table appears empty
+    // until the next user interaction forces a repaint.
+    requestAnimationFrame(() => {
+      computeLogStats();
+      logPage = 0;
+      applyLogFilters();
+    });
+  }, 400);
+}
+
+function computeLogStats() {
+  const n = logRows.length;
+  if (!n) return;
+  // Single pass — no spread operators (stack overflows on large arrays)
+  let pass = 0, sumEl = 0, minEl = Infinity, maxEl = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const r = logRows[i];
+    if (r.success) pass++;
+    const el = r.elapsed || 0;
+    sumEl += el;
+    if (el < minEl) minEl = el;
+    if (el > maxEl) maxEl = el;
+  }
+  const fail    = n - pass;
+  const avgEl   = Math.round(sumEl / n);
+  const errRate = ((fail / n) * 100).toFixed(1);
+
+  setText('logStatTotal',   n.toLocaleString());
+  setText('logStatPass',    pass.toLocaleString());
+  setText('logStatFail',    fail.toLocaleString());
+  setText('logStatAvg',     fmtMs(avgEl));
+  setText('logStatMinMax',  fmtMs(minEl === Infinity ? 0 : minEl) + ' / ' + fmtMs(maxEl === -Infinity ? 0 : maxEl));
+  setText('logStatErrRate', errRate + '%');
+}
+
+// ── Filter + Sort ─────────────────────────────────────────────────────────────
+function setLogStatusFilter(val, btn) {
+  logStatusFilt = val;
+  document.querySelectorAll('.log-toolbar .log-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyLogFilters();
+}
+
+function applyLogFilters() {
+  const q = (document.getElementById('logSearch')?.value || '').toLowerCase();
+  logFiltered = logRows.filter(r => {
+    if (logStatusFilt === 'pass' && !r.success) return false;
+    if (logStatusFilt === 'fail' && r.success)  return false;
+    if (logStatusFilt === '5xx'  && !r.code?.startsWith('5')) return false;
+    if (logStatusFilt === '4xx'  && !r.code?.startsWith('4')) return false;
+    if (!q) return true;
+    return (r.label||'').toLowerCase().includes(q) ||
+           (r.wkn||'').includes(q) ||
+           (r.code||'').includes(q) ||
+           (r.responseMsg||'').toLowerCase().includes(q) ||
+           (r.thread||'').toLowerCase().includes(q) ||
+           (r.failureMsg||'').toLowerCase().includes(q) ||
+           (r.url||'').toLowerCase().includes(q) ||
+           (r.requestBody||'').toLowerCase().includes(q) ||
+           (r.responseBody||'').toLowerCase().includes(q);
+  });
+  logPage = 0;
+  setText('logCountInfo', logFiltered.length.toLocaleString() + ' of ' + logRows.length.toLocaleString() + ' rows');
+  renderLogTable();
+}
+
+function sortLog(key, th) {
+  if (logSortKey === key) logSortDir *= -1; else { logSortKey = key; logSortDir = 1; }
+  document.querySelectorAll('.log-tbl th').forEach(t => t.classList.remove('sorted'));
+  th.classList.add('sorted');
+  logFiltered.sort((a,b) => {
+    const av = typeof a[key]==='string' ? a[key] : (a[key]||0);
+    const bv = typeof b[key]==='string' ? b[key] : (b[key]||0);
+    return av > bv ? logSortDir : av < bv ? -logSortDir : 0;
+  });
+  logPage = 0;
+  renderLogTable();
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderLogTable() {
+  const start  = logPage * LOG_PER_PAGE;
+  const end    = Math.min(start + LOG_PER_PAGE, logFiltered.length);
+  const rows   = logFiltered.slice(start, end);
+  const body   = document.getElementById('logTableBody');
+  if (!body) return;
+
+  body.innerHTML = rows.map((r, i) => {
+    const absIdx  = start + i;
+    const tsStr   = r.ts
+      ? new Date(r.ts).toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
+      : r.tsRaw;
+    const codeCls = !r.code ? 'log-code-2xx' :
+                    r.code.startsWith('2') ? 'log-code-2xx' :
+                    r.code.startsWith('3') ? 'log-code-3xx' :
+                    r.code.startsWith('4') ? 'log-code-4xx' : 'log-code-5xx';
+    const elColor = r.elapsed > 3000 ? 'var(--red)' : r.elapsed > 1000 ? 'var(--yellow)' : 'var(--green)';
+    const rowCls  = !r.success ? ' err-row' : '';
+    const statusDot = r.success
+      ? '<span style="color:var(--green)">✓ PASS</span>'
+      : '<span style="color:var(--red)">✗ FAIL</span>';
+    const reqBadge = r.requestBody
+      ? `<span style="font-family:'Fira Code',monospace;font-size:9px;padding:1px 5px;border:1px solid rgba(56,182,255,0.35);color:var(--blue);margin-right:3px">REQ</span>` : '';
+    const resBadge = r.responseBody
+      ? `<span style="font-family:'Fira Code',monospace;font-size:9px;padding:1px 5px;border:1px solid rgba(0,217,126,0.35);color:var(--green)">RES</span>` : '';
+
+    return `<tr class="${rowCls}" onclick="showLogDetail(${absIdx})">
+      <td style="color:var(--muted)">${start+i+1}</td>
+      <td style="color:var(--text);white-space:nowrap">${escHtml(tsStr)}</td>
+      <td style="color:var(--text);font-weight:600" title="${escHtml(r.label)}">${escHtml(r.label)}</td>
+      <td style="color:var(--blue);font-family:'Fira Code',monospace">${escHtml(r.wkn||'—')}</td>
+      <td><span class="log-code-pill ${codeCls}">${escHtml(r.code||'—')}</span></td>
+      <td style="color:var(--muted)" title="${escHtml(r.responseMsg||'')}">${escHtml(r.responseMsg||'—')}</td>
+      <td style="color:${elColor}">${r.elapsed ? fmtMs(r.elapsed) : '—'}</td>
+      <td>${statusDot}</td>
+      <td>${reqBadge}${resBadge||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  renderLogPager();
+}
+
+// ── Detail drawer ─────────────────────────────────────────────────────────────
+function showLogDetail(idx) {
+  const r = logFiltered[idx];
+  if (!r) return;
+
+  // Highlight selected row
+  document.querySelectorAll('#logTableBody tr').forEach((tr,i) => {
+    const absI = logPage*LOG_PER_PAGE + i;
+    tr.classList.toggle('selected', absI === idx);
+  });
+
+  const ts  = r.ts ? new Date(r.ts).toLocaleString() : r.tsRaw;
+  const drawer = document.getElementById('logDetailDrawer');
+  const grid   = document.getElementById('logDetailGrid');
+  if (!drawer || !grid) return;
+
+  const field = (key, val, cls='') =>
+    val ? `<div class="lds-row"><span class="lds-key">${key}</span><span class="lds-val ${cls}">${escHtml(String(val))}</span></div>` : '';
+
+  const elColor = r.elapsed>3000?'err':r.elapsed>1000?'warn':'ok';
+  const codeCls = !r.code?'ok':r.code.startsWith('2')?'ok':r.code.startsWith('3')?'code':r.code.startsWith('4')?'warn':'err';
+
+  grid.innerHTML = `
+    <div class="log-detail-section">
+      <div class="lds-title">📋 Request Info</div>
+      ${field('Start Time',    ts)}
+      ${field('Request Name',  r.label)}
+      ${field('WKN',           r.wkn)}
+      ${field('URL',           r.url)}
+      ${field('Thread',        r.thread)}
+      ${field('Elapsed',       r.elapsed ? fmtMs(r.elapsed) : null, elColor)}
+      ${field('Latency',       r.latency ? fmtMs(r.latency) : null)}
+      ${field('Connect Time',  r.connect ? fmtMs(r.connect) : null)}
+      ${field('Bytes Sent',    r.sentBytes ? fmtBytes(r.sentBytes) : null)}
+      ${field('Bytes Recv',    r.bytes ? fmtBytes(r.bytes) : null)}
+    </div>
+    <div class="log-detail-section">
+      <div class="lds-title">📨 Request Body</div>
+      ${r.requestBody
+        ? `<div class="log-req-box" style="max-height:260px">${escHtml(r.requestBody)}</div>
+           <button onclick="navigator.clipboard?.writeText(logFiltered[${idx}]?.requestBody||'')"
+             style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);
+                    font-family:'Fira Code',monospace;font-size:10px;padding:3px 10px;cursor:pointer">
+             ⎘ Copy Request JSON
+           </button>`
+        : '<div style="font-family:Fira Code,monospace;font-size:10px;color:var(--muted)">No request body captured</div>'
+      }
+    </div>
+    <div class="log-detail-section">
+      <div class="lds-title">
+        📬 Response
+        <span class="log-code-pill ${codeCls}" style="margin-left:8px">${r.code||'—'}</span>
+        <span style="margin-left:6px;font-size:10px;color:var(--muted)">${escHtml(r.responseMsg||'')}</span>
+      </div>
+      ${field('Status', r.success ? '✓ PASS' : '✗ FAIL', r.success?'ok':'err')}
+      ${r.failureMsg ? `${field('Failure Reason', r.failureMsg, 'err')}` : ''}
+      ${r.responseBody
+        ? `<div class="log-msg-box" style="max-height:220px;margin-top:8px;border-left-color:${r.success?'var(--green)':'var(--red)'}">${escHtml(r.responseBody)}</div>
+           <button onclick="navigator.clipboard?.writeText(logFiltered[${idx}]?.responseBody||'')"
+             style="margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--muted);
+                    font-family:'Fira Code',monospace;font-size:10px;padding:3px 10px;cursor:pointer">
+             ⎘ Copy Response JSON
+           </button>`
+        : '<div style="font-family:Fira Code,monospace;font-size:10px;color:var(--muted);margin-top:8px">No response body captured</div>'
+      }
+    </div>`;
+
+  drawer.classList.add('open');
+}
+
+function closeLogDetail() {
+  document.getElementById('logDetailDrawer')?.classList.remove('open');
+  document.querySelectorAll('#logTableBody tr').forEach(tr => tr.classList.remove('selected'));
+}
+
+// ── Pager ──────────────────────────────────────────────────────────────────────
+function renderLogPager() {
+  const total = Math.ceil(logFiltered.length / LOG_PER_PAGE);
+  const pg    = document.getElementById('logPager');
+  if (!pg) return;
+  if (total <= 1) { pg.innerHTML = `<span class="log-pager-info">${logFiltered.length} rows — all shown</span>`; return; }
+
+  let html = `<button class="log-pager-btn" ${logPage===0?'disabled':''} onclick="logGoPage(${logPage-1})">← Prev</button>`;
+  const s = Math.max(0, logPage-3), e2 = Math.min(total-1, logPage+3);
+  if (s>0) html += `<button class="log-pager-btn" onclick="logGoPage(0)">1</button><span style="color:var(--muted);font-size:10px">…</span>`;
+  for (let p=s;p<=e2;p++) html += `<button class="log-pager-btn ${p===logPage?'active':''}" onclick="logGoPage(${p})">${p+1}</button>`;
+  if (e2<total-1) html += `<span style="color:var(--muted);font-size:10px">…</span><button class="log-pager-btn" onclick="logGoPage(${total-1})">${total}</button>`;
+  html += `<button class="log-pager-btn" ${logPage===total-1?'disabled':''} onclick="logGoPage(${logPage+1})">Next →</button>`;
+  html += `<span class="log-pager-info">Showing ${logPage*LOG_PER_PAGE+1}–${Math.min((logPage+1)*LOG_PER_PAGE, logFiltered.length)} of ${logFiltered.length}</span>`;
+  pg.innerHTML = html;
+}
+
+function logGoPage(p) { logPage = p; renderLogTable(); closeLogDetail(); }
+
+// ── Export ─────────────────────────────────────────────────────────────────────
+function exportLogCSV() {
+  const cols = ['Timestamp','Label','ResponseCode','ResponseMessage','Success',
+    'Elapsed(ms)','Latency(ms)','ConnectTime(ms)','BytesReceived','BytesSent',
+    'Thread','URL','FailureMessage'];
+  const esc  = v => v==null?'':'"'+String(v).replace(/"/g,'""')+'"';
+  const lines = [cols.join(',')];
+  logFiltered.forEach(r => {
+    lines.push([
+      r.ts ? new Date(r.ts).toISOString() : r.tsRaw,
+      esc(r.label), r.code, esc(r.responseMsg), r.success,
+      r.elapsed, r.latency, r.connect, r.bytes, r.sentBytes,
+      esc(r.thread), esc(r.url), esc(r.failureMsg),
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'request-log-export.csv'; a.click();
+}
+
+// ── Demo data ──────────────────────────────────────────────────────────────────
+function loadLogDemoData() {
+  const ops = [
+    {label:'ExecuteOrder - BUY',  wkn:'523280'},
+    {label:'ExecuteOrder - SELL', wkn:'543900'},
+    {label:'GetOrderStatus',      wkn:'523280'},
+    {label:'CancelOrder',         wkn:'778100'},
+    {label:'GetPortfolio',        wkn:''},
+    {label:'PlaceOrder - LIMIT',  wkn:'998800'},
+  ];
+  const baseTs  = Date.now() - 180000;
+  const demo = [];
+  for (let i=0; i<80; i++) {
+    const op      = ops[i % ops.length];
+    const spike   = i > 40 && i < 55;
+    const elapsed = Math.max(20, Math.round(280*(spike?3.5:1) + (Math.random()-0.4)*120));
+    const success = Math.random() > (spike?0.25:0.03);
+    const code    = success ? '200' : (Math.random()>0.5?'500':Math.random()>0.5?'503':'400');
+    const qty     = Math.floor(Math.random()*500+50)*10;
+    demo.push({
+      ts:           baseTs + i*2200 + Math.round(Math.random()*300),
+      tsRaw:        '',
+      label:        `${op.label} (WKN : ${op.wkn||'N/A'})`,
+      wkn:          op.wkn,
+      code,
+      responseMsg:  success ? 'OK' : (code==='500'?'Internal Server Error':code==='503'?'Service Unavailable':'Bad Request'),
+      success,
+      failureMsg:   success ? '' : `Response code expected 200 but was ${code}`,
+      elapsed,
+      latency:      Math.round(elapsed*0.75),
+      connect:      Math.round(Math.random()*25),
+      bytes:        Math.round(800+Math.random()*2000),
+      sentBytes:    Math.round(300+Math.random()*500),
+      thread:       `Thread Group 1-${(i%10)+1}`,
+      url:          `https://api.example.com/orders`,
+      requestBody:  JSON.stringify({
+        secAccount: {id: `${op.wkn}00`, ccy:'EUR'},
+        simpleOrderLeg:[{security:{id:op.wkn||'000000'},quantity:qty,tradeType:'A',activityType:'B'}],
+        checkRiskClass: false, checkDisposition: false,
+      }, null, 2),
+      responseBody: success ? JSON.stringify({
+        orderId: `ORD-${Math.random().toString(36).substr(2,8).toUpperCase()}`,
+        status: 'ACCEPTED', secAccount:{id:`${op.wkn}00`},
+        executedQty: qty, remainingQty: 0,
+      }, null, 2) : JSON.stringify({
+        error: code, message: code==='500'?'NullPointerException at OrderService.java:142':
+          code==='503'?'Circuit breaker OPEN for downstream service':'Missing required field: secAccount',
+        traceId: `trace-${Math.random().toString(36).substr(2,8).toUpperCase()}`,
+      }, null, 2),
+    });
+  }
+  logRows = demo;
+  document.getElementById('logFileLabel').textContent = 'demo-log.csv';
+  document.getElementById('logModalBadge').textContent = demo.length + ' rows';
+  document.getElementById('logDropSection').style.display = 'none';
+  const demoContent = document.getElementById('logContent'); demoContent.style.display = 'flex';
+  requestAnimationFrame(() => {
+    computeLogStats();
+    logPage = 0;
+    applyLogFilters();
+  });
+}
+
+// ─── Theme Toggle ─────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  document.getElementById('themeIcon').textContent = isLight ? '☀️' : '🌙';
+  document.getElementById('themeLabel').textContent = isLight ? 'LIGHT' : 'DARK';
+  if (allRows.length) requestAnimationFrame(() => requestAnimationFrame(computeAndRender));
+}
+
+// ── Screenshot capture ───────────────────────────────────────────────────────
+function captureScreenshot() {
+  const btn = document.getElementById('screenshotBtn');
+  const originalText = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = 'Capturing&#8230;'; btn.disabled = true; }
+
+  // Dynamically load html2canvas only when needed
+  if (!window.html2canvas) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload  = () => doCapture();
+    script.onerror = () => {
+      // Fallback: browser print to PDF
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+      alert('Screenshot library unavailable. Use Ctrl+P / Cmd+P to print/save as PDF.');
+    };
+    document.head.appendChild(script);
+  } else {
+    doCapture();
+  }
+
+  function doCapture() {
+    const target = document.getElementById('mainDash') || document.body;
+    html2canvas(target, {
+      backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg') || '#07090d',
+      scale: window.devicePixelRatio || 1,
+      useCORS: true,
+      logging: false
+    }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'jmeter-dashboard-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+    }).catch(() => {
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+      alert('Capture failed. Use Ctrl+P / Cmd+P to print/save as PDF.');
+    });
+  }
+}
+
+// ── Test Health Scorecard ─────────────────────────────────────────────────────
+function renderScorecard(avgMs, errPct, p99Ms, tps, p90Ms, p50Ms, slowPct) {
+  const grade = (val, good, warn) => val <= good ? 'good' : val <= warn ? 'warn' : 'fail';
+  const badge = (g) => g === 'good' ? '✓ GOOD' : g === 'warn' ? '⚠ WARN' : '✗ FAIL';
+
+  const metrics = [
+    { id:'avg',    val: avgMs,              g: grade(avgMs,    500,  1000), fmt: fmtMs(Math.round(avgMs)),     sub:'threshold < 500ms' },
+    { id:'err',    val: errPct,             g: grade(errPct,   1,    5),    fmt: errPct.toFixed(2) + '%',       sub:'threshold < 1%' },
+    { id:'p99',    val: p99Ms,              g: grade(p99Ms,    2000, 5000), fmt: fmtMs(p99Ms),                  sub:'threshold < 2s' },
+    { id:'tps',    val: 0,                  g: 'good',                      fmt: tps.toFixed(1) + '/s',         sub:'sustained req/s' },
+    { id:'spread', val: p50Ms ? p90Ms/p50Ms : 0, g: grade(p50Ms ? p90Ms/p50Ms : 0, 3, 6), fmt: p50Ms ? (p90Ms/p50Ms).toFixed(1) + '×' : '—', sub:'tail spread ratio' },
+    { id:'slow',   val: slowPct,            g: grade(slowPct,  2,    8),    fmt: slowPct.toFixed(1) + '%',      sub:'> 2s response time' },
+  ];
+
+  metrics.forEach(({ id, g, fmt, sub }) => {
+    const cell  = document.getElementById('sc-' + id);
+    const valEl = document.getElementById('scVal'   + id.charAt(0).toUpperCase() + id.slice(1));
+    const bdgEl = document.getElementById('scBadge' + id.charAt(0).toUpperCase() + id.slice(1));
+    const subEl = document.getElementById('scSub'   + id.charAt(0).toUpperCase() + id.slice(1));
+    if (!cell) return;
+    cell.className = 'score-cell sc-' + g;
+    if (valEl) valEl.textContent = fmt;
+    if (bdgEl) bdgEl.textContent = badge(g);
+    if (subEl && sub) subEl.textContent = sub;
+  });
+
+  // Overall grade
+  const counts = { good: 0, warn: 0, fail: 0 };
+  metrics.forEach(m => counts[m.g]++);
+  let letter = 'F', color = 'var(--red)', desc = 'Multiple failures — significant performance problems';
+  if (counts.fail === 0 && counts.warn === 0) { letter='A'; color='var(--green)'; desc='All metrics passing — excellent result'; }
+  else if (counts.fail === 0 && counts.warn <= 1){ letter='B'; color='var(--green)'; desc=counts.warn+' metric needs attention'; }
+  else if (counts.fail === 0)                    { letter='B'; color='var(--yellow)';desc=counts.warn+' metrics need attention'; }
+  else if (counts.fail === 1)                    { letter='C'; color='var(--yellow)';desc='1 metric failing — review performance'; }
+  else if (counts.fail === 2)                    { letter='D'; color='var(--orange)'; desc='2 metrics failing — performance issues present'; }
+
+  const letterEl = document.getElementById('gradeLetter');
+  const descEl   = document.getElementById('gradeDesc');
+  const dotsEl   = document.getElementById('gradeDots');
+  if (letterEl) { letterEl.textContent = letter; letterEl.style.color = color; }
+  if (descEl)   descEl.textContent = desc;
+  if (dotsEl) {
+    const dotColors = metrics.map(m =>
+      m.g === 'good' ? 'var(--green)' : m.g === 'warn' ? 'var(--yellow)' : 'var(--red)'
+    );
+    dotsEl.innerHTML = dotColors.map(dc =>
+      `<div class="grade-dot" style="background:${dc}"></div>`
+    ).join('');
+  }
+}
+
+</script>
+
+<!-- ── REQUEST LOG VIEWER OVERLAY ── -->
+<div id="logViewerOverlay">
+  <div class="log-viewer-modal">
+
+    <!-- Header -->
+    <div class="log-modal-header">
+      <div class="log-modal-title">
+        📋 Request Log Viewer
+        <span class="log-modal-badge" id="logModalBadge">0 rows</span>
+        <span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--muted)" id="logFileLabel"></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="log-filter-btn" onclick="exportLogCSV()" style="border-color:var(--green);color:var(--green)">⬇ Export Filtered CSV</button>
+        <button class="log-close-btn" onclick="closeLogViewer()">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Drop zone (shown when no file loaded) -->
+    <div id="logDropSection">
+      <div class="log-drop-zone" id="logDropZone">
+        <input type="file" id="logFileInput" accept=".csv,.jtl,.tsv" onchange="handleLogFile(this.files[0])">
+        <div class="log-drop-icon">📂</div>
+        <div class="log-drop-text">Drop your <span>.csv</span> or <span>.jtl</span> results file here<br>
+          <span style="font-size:11px;color:var(--muted2)">or click to browse</span>
+        </div>
+        <div class="log-drop-hint">
+          <strong style="color:var(--blue)">Your format (pipe-delimited):</strong><br>
+          <code>Request Name | WKN | Response Code | Response Message | Start Time | Request Message | Response Message</code><br><br>
+          <strong style="color:var(--muted)">Also supports standard JMeter CSV:</strong><br>
+          <code>timeStamp, elapsed, label, responseCode, responseMessage, threadName, success, bytes…</code><br>
+          — Format is auto-detected on load
+        </div>
+      </div>
+      <div style="text-align:center;padding:0 20px 20px">
+        <button class="btn-demo-load" style="max-width:400px" onclick="loadLogDemoData()">▶ &nbsp; Load Demo Data (no file needed)</button>
+      </div>
+      <!-- Log upload progress bar -->
+      <div id="logProgressWrap" style="display:none; padding:4px 24px 20px;">
+        <div style="font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">
+          <span id="logProgressLabel">Reading file…</span>
+        </div>
+        <div class="log-prog-track">
+          <div class="log-prog-bar" id="logProgressBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content (shown after file load) -->
+    <div id="logContent" style="display:none;flex-direction:column">
+
+      <!-- Stats bar -->
+      <div class="log-stats-bar">
+        <div class="log-stat"><div class="log-stat-label">Total Requests</div><div class="log-stat-val" id="logStatTotal" style="color:var(--blue)">—</div></div>
+        <div class="log-stat"><div class="log-stat-label">Pass</div><div class="log-stat-val" id="logStatPass" style="color:var(--green)">—</div></div>
+        <div class="log-stat"><div class="log-stat-label">Fail</div><div class="log-stat-val" id="logStatFail" style="color:var(--red)">—</div></div>
+        <div class="log-stat"><div class="log-stat-label">Avg Response</div><div class="log-stat-val" id="logStatAvg" style="color:var(--yellow)">—</div></div>
+        <div class="log-stat"><div class="log-stat-label">Min / Max</div><div class="log-stat-val" id="logStatMinMax" style="color:var(--muted);font-size:12px">—</div></div>
+        <div class="log-stat"><div class="log-stat-label">Error Rate</div><div class="log-stat-val" id="logStatErrRate" style="color:var(--red)">—</div></div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="log-toolbar">
+        <input class="log-search" id="logSearch" placeholder="Search name, code, message, thread, URL…" oninput="applyLogFilters()">
+        <div class="log-toolbar-sep"></div>
+        <button class="log-filter-btn active" onclick="setLogStatusFilter('all',this)">ALL</button>
+        <button class="log-filter-btn" onclick="setLogStatusFilter('pass',this)">✓ PASS</button>
+        <button class="log-filter-btn err" onclick="setLogStatusFilter('fail',this)">✗ FAIL</button>
+        <button class="log-filter-btn err" onclick="setLogStatusFilter('5xx',this)">5xx</button>
+        <button class="log-filter-btn err" onclick="setLogStatusFilter('4xx',this)">4xx</button>
+        <div class="log-toolbar-sep"></div>
+        <button class="log-filter-btn" onclick="showLogDropZone()">↑ Load New File</button>
+        <span class="log-count-info" id="logCountInfo">—</span>
+      </div>
+
+      <!-- Table -->
+      <div class="log-table-wrap">
+        <table class="log-tbl" id="logTable">
+          <thead>
+            <tr>
+              <th onclick="sortLog('ts',this)">#</th>
+              <th onclick="sortLog('ts',this)">Start Time ↕</th>
+              <th onclick="sortLog('label',this)">Request Name ↕</th>
+              <th onclick="sortLog('wkn',this)">WKN ↕</th>
+              <th onclick="sortLog('code',this)">Code ↕</th>
+              <th onclick="sortLog('responseMsg',this)">Response Message ↕</th>
+              <th onclick="sortLog('elapsed',this)">Elapsed ↕</th>
+              <th onclick="sortLog('success',this)">Status ↕</th>
+              <th>Bodies</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Detail drawer -->
+      <div class="log-detail-drawer" id="logDetailDrawer">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <span style="font-family:'Fira Code',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">▼ Request Detail</span>
+          <button onclick="closeLogDetail()" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px">✕</button>
+        </div>
+        <div class="log-detail-grid" id="logDetailGrid"></div>
+      </div>
+
+      <!-- Pager -->
+      <div class="log-pager" id="logPager"></div>
+
+    </div>
+  </div>
+</div>
+
+
+<div id="progressOverlay">
+  <div class="prog-label" id="progLabel">Loading…</div>
+  <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+  <div class="prog-pct"   id="progPct">0%</div>
+</div>
+</body>
+</html>
