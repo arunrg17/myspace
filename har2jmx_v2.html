@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAR → JMX Converter v2</title>
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=jetbrains-mono:400,500,700|inter:400,500,600,700|fraunces:600,700,900" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e1014;
+  --bg-2: #15181f;
+  --bg-3: #1c2029;
+  --surface: #1a1d25;
+  --border: #262b35;
+  --border-2: #323844;
+  --text: #e6e8ec;
+  --text-2: #9aa3b2;
+  --text-3: #5d6573;
+  --accent: #c9a961;
+  --accent-2: #8b7340;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #f87171;
+  --info: #60a5fa;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Inter', system-ui, sans-serif;
+  --display: 'Fraunces', Georgia, serif;
+}
+[data-theme="light"] {
+  --bg: #f7f5f0;
+  --bg-2: #ebe8e1;
+  --bg-3: #e2ddd2;
+  --surface: #fffdf8;
+  --border: #d8d3c5;
+  --border-2: #c4bdab;
+  --text: #1a1d25;
+  --text-2: #4a5260;
+  --text-3: #7a8290;
+  --accent: #8b6f2a;
+  --accent-2: #6b5520;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+
+.app { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; }
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: var(--bg-2);
+}
+.brand {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.brand .arrow {
+  font-family: var(--mono);
+  font-weight: 400;
+  color: var(--accent);
+  font-size: 14px;
+}
+.brand .ver {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.steps {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.step {
+  padding: 4px 10px;
+  border-radius: 3px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.step.active { color: var(--accent); background: var(--bg-3); }
+.step.done { color: var(--ok); }
+.step .num {
+  display: inline-flex;
+  width: 16px; height: 16px;
+  align-items: center; justify-content: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 9px;
+}
+.theme-toggle {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--border-2); }
+
+main { padding: 20px 24px; overflow: hidden; }
+
+.dropzone {
+  border: 2px dashed var(--border-2);
+  border-radius: 6px;
+  padding: 60px 24px;
+  text-align: center;
+  transition: all 0.15s;
+  background: var(--surface);
+  cursor: pointer;
+  max-width: 720px;
+  margin: 40px auto;
+}
+.dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--bg-3); }
+.dropzone h2 { font-family: var(--display); font-weight: 700; font-size: 22px; margin-bottom: 8px; }
+.dropzone p { color: var(--text-2); font-size: 13px; }
+.dropzone .hint { margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.dropzone .icon { font-size: 32px; color: var(--accent); margin-bottom: 12px; font-family: var(--display); }
+
+.howto {
+  max-width: 720px;
+  margin: 0 auto 40px;
+  padding: 18px 22px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.howto h3 {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.howto ol { padding-left: 18px; line-height: 1.7; }
+.howto code { font-family: var(--mono); background: var(--bg-3); padding: 1px 6px; border-radius: 2px; font-size: 11px; color: var(--text); }
+
+.workspace { display: none; height: calc(100vh - 130px); grid-template-columns: 400px 1fr; gap: 0; }
+.workspace.active { display: grid; }
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--bg-2);
+  overflow-y: auto;
+  padding: 14px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.panel-h {
+  padding: 9px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.panel-h .badge {
+  background: var(--bg);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.panel-h .chev { color: var(--text-3); font-size: 9px; }
+.panel.collapsed .panel-b { display: none; }
+.panel.collapsed .chev { transform: rotate(-90deg); display: inline-block; }
+.panel-b { padding: 11px; }
+.panel-b .row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--border);
+}
+.panel-b .row:last-child { border-bottom: none; }
+.panel-b .row .k { color: var(--text-3); }
+.panel-b .row .v { color: var(--text); font-weight: 500; }
+
+.field { margin-bottom: 9px; }
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.content { overflow-y: auto; padding: 16px 20px; }
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.toolbar input[type="search"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: var(--mono);
+  width: 280px;
+}
+.toolbar input[type="search"]:focus { outline: none; border-color: var(--accent); }
+
+.btn {
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.1s;
+}
+.btn:hover { border-color: var(--border-2); background: var(--bg-3); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+.btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--bg); }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 4px 8px; font-size: 11px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.chips { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip {
+  padding: 3px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  border-radius: 12px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.chip.on { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.chip:hover { border-color: var(--border-2); }
+
+.req-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.req-table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  position: sticky; top: 0;
+  z-index: 1;
+}
+.req-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.05s; }
+.req-table tbody tr:hover { background: var(--bg-2); }
+.req-table tbody tr.selected { background: rgba(201, 169, 97, 0.08); }
+.req-table td { padding: 7px 10px; vertical-align: middle; }
+.req-table input[type="checkbox"] { cursor: pointer; }
+.method { display: inline-block; padding: 1px 5px; border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+.m-GET { background: rgba(96, 165, 250, 0.15); color: var(--info); }
+.m-POST { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+.m-PUT { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+.m-DELETE { background: rgba(248, 113, 113, 0.15); color: var(--err); }
+.m-PATCH { background: rgba(192, 132, 252, 0.15); color: #c084fc; }
+.m-OPTIONS, .m-HEAD { background: var(--bg-3); color: var(--text-3); }
+.status { font-weight: 500; }
+.status.s2 { color: var(--ok); }
+.status.s3 { color: var(--info); }
+.status.s4 { color: var(--warn); }
+.status.s5 { color: var(--err); }
+.url-cell { max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.url-cell .host { color: var(--text-3); }
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.tag.tx { background: rgba(201, 169, 97, 0.15); color: var(--accent); }
+.tag.pg { background: rgba(96, 165, 250, 0.15); color: var(--info); }
+.corr-flag { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); margin-right: 4px; vertical-align: middle; }
+.param-flag { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-right: 4px; vertical-align: middle; }
+
+.drawer {
+  position: fixed;
+  right: 0; top: 0; bottom: 0;
+  width: 620px;
+  background: var(--bg-2);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 0.2s ease-out;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+.drawer.open { transform: translateX(0); box-shadow: -8px 0 24px rgba(0,0,0,0.3); }
+.drawer-h {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-3);
+}
+.drawer-h h3 { font-family: var(--display); font-size: 16px; font-weight: 700; }
+.drawer-b { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.drawer-section { margin-bottom: 18px; }
+.drawer-section h4 {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.kv {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px;
+  word-break: break-all;
+}
+.kv .row { padding: 3px 0; display: flex; gap: 6px; align-items: flex-start; }
+.kv .row:hover { background: var(--bg-3); margin: 0 -6px; padding: 3px 6px; border-radius: 2px; }
+.kv .k { color: var(--accent); flex-shrink: 0; }
+.kv .v { color: var(--text); flex: 1; }
+.kv .pbtn {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  border-radius: 2px;
+  font-size: 9px;
+  cursor: pointer;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+.kv .pbtn:hover { color: var(--ok); border-color: var(--ok); }
+.kv .pbtn.active { background: var(--ok); color: var(--bg); border-color: var(--ok); font-weight: 700; }
+.body-pre {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text);
+}
+
+.list-item-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  padding: 7px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.list-item-row input { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); padding: 3px 6px; border-radius: 2px; font-family: var(--mono); font-size: 11px; }
+.list-item-row .count { font-family: var(--mono); font-size: 10px; color: var(--text-3); padding: 0 6px; }
+.list-item-row .del { color: var(--err); padding: 2px 6px; font-family: var(--mono); }
+.list-item-row .del:hover { background: rgba(248,113,113,0.1); border-radius: 2px; }
+
+.corr-list, .param-list { display: flex; flex-direction: column; max-height: 280px; overflow-y: auto; }
+.corr-item, .param-item {
+  padding: 7px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.corr-item .name, .param-item .name { color: var(--accent); font-weight: 600; }
+.corr-item .meta, .param-item .meta { color: var(--text-3); font-size: 10px; margin-top: 3px; word-break: break-all; }
+.corr-item .meta .arrow, .param-item .meta .arrow { color: var(--accent); }
+.param-item.disabled { opacity: 0.5; }
+.param-item .name { display: flex; align-items: center; gap: 6px; }
+.param-item input.value { width: 100%; margin-top: 4px; background: var(--bg-2); border: 1px solid var(--border); color: var(--text); padding: 3px 6px; border-radius: 2px; font-family: var(--mono); font-size: 10px; }
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.actions { display: flex; gap: 8px; }
+
+.toast {
+  position: fixed;
+  bottom: 60px; right: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-left: 3px solid var(--accent);
+  padding: 10px 16px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: var(--mono);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.2s;
+  z-index: 200;
+  max-width: 380px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.err { border-left-color: var(--err); }
+.toast.ok { border-left-color: var(--ok); }
+
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  width: 480px;
+  max-width: 90vw;
+  padding: 20px;
+}
+.modal h3 { font-family: var(--display); font-size: 18px; margin-bottom: 12px; font-weight: 700; }
+.modal p { color: var(--text-2); margin-bottom: 12px; font-size: 12px; }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--text-3); font-family: var(--mono); font-size: 12px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+.hint-text { font-size: 10px; color: var(--text-3); line-height: 1.4; margin-top: 6px; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      HAR <span class="arrow">→</span> JMX
+      <span class="ver">v2 · jmeter 5.6+ · project layout</span>
+    </div>
+    <div class="steps">
+      <span class="step active" id="step-1"><span class="num">1</span>Import</span>
+      <span class="step" id="step-2"><span class="num">2</span>Curate</span>
+      <span class="step" id="step-3"><span class="num">3</span>Configure</span>
+      <span class="step" id="step-4"><span class="num">4</span>Generate</span>
+    </div>
+    <button class="theme-toggle" id="themeBtn">◐ theme</button>
+  </header>
+
+  <main>
+    <div id="importView">
+      <div class="howto">
+        <h3>How to capture from your browser</h3>
+        <ol>
+          <li>Open your banking app in Chrome / Edge / Firefox</li>
+          <li>Press <code>F12</code> → go to the <code>Network</code> tab</li>
+          <li>Tick <code>Preserve log</code>, then click the clear (⊘) button</li>
+          <li>Perform your business flow (login, view balance, transfer, etc.)</li>
+          <li>Right-click anywhere in the request list → <code>Save all as HAR with content</code></li>
+          <li>Drop the saved <code>.har</code> file below — everything stays in your browser, nothing is uploaded</li>
+        </ol>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <div class="icon">⤓</div>
+        <h2>Drop a .har file here</h2>
+        <p>or click to browse</p>
+        <div class="hint">parsed locally · no network calls · no storage</div>
+        <input type="file" id="fileInput" accept=".har,application/json" style="display:none">
+      </div>
+    </div>
+
+    <div class="workspace" id="workspace">
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-h" data-toggle>Capture <span><span class="badge" id="captureName">—</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <div class="row"><span class="k">total requests</span><span class="v" id="statTotal">0</span></div>
+            <div class="row"><span class="k">selected</span><span class="v" id="statSelected">0</span></div>
+            <div class="row"><span class="k">hosts</span><span class="v" id="statHosts">0</span></div>
+            <div class="row"><span class="k">methods</span><span class="v" id="statMethods">—</span></div>
+            <div class="row"><span class="k">duration</span><span class="v" id="statDuration">—</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Test plan <span class="chev">▾</span></div>
+          <div class="panel-b">
+            <div class="field">
+              <label>Plan name</label>
+              <input id="planName" type="text" value="LPT - Banking Flow">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Threads (users)</label>
+                <input id="threads" type="number" value="10" min="1">
+              </div>
+              <div class="field">
+                <label>Ramp-up (s)</label>
+                <input id="rampup" type="number" value="30" min="0">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Loops</label>
+                <input id="loops" type="number" value="1" min="-1">
+              </div>
+              <div class="field">
+                <label>Duration (s)</label>
+                <input id="duration" type="number" value="0" min="0" placeholder="0 = off">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Variables (UDV) <span><span class="badge" id="udvCount">0</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <p class="hint-text">Environment values. Edit them in JMeter to switch between dev/staging/prod without touching the script.</p>
+            <div id="udvList"></div>
+            <button class="btn btn-sm" style="margin-top:6px;width:100%" id="addUdvBtn">+ add variable</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Pages <span><span class="badge" id="pageCount">0</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <p class="hint-text">Each page becomes a Simple Controller. Auto-detected from navigation events and time gaps.</p>
+            <div id="pageList"></div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button class="btn btn-sm" style="flex:1" id="addPageBtn">+ add page</button>
+              <button class="btn btn-sm" style="flex:1" id="redetectPagesBtn">↻ re-detect</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Transactions <span><span class="badge" id="txCount">0</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <p class="hint-text">Transaction Controllers measure timings of business actions inside a page (e.g. "Submit Login").</p>
+            <div id="txList"></div>
+            <button class="btn btn-sm" style="margin-top:6px;width:100%" id="addTxBtn">+ add transaction</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Parameters (CSV) <span><span class="badge" id="paramCount">0</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <p class="hint-text">Values that should vary per virtual user (login, account, amount). Enable to include in the generated <code>data.csv</code>.</p>
+            <div class="param-list" id="paramList"></div>
+            <button class="btn btn-sm" style="margin-top:6px;width:100%" id="rescanParamsBtn">↻ re-scan</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h" data-toggle>Correlation <span><span class="badge" id="corrCount">0</span> <span class="chev">▾</span></span></div>
+          <div class="panel-b">
+            <p class="hint-text">Auto-detected dynamic values (session/auth/CSRF). Each becomes an Extractor + variable substitution.</p>
+            <div class="corr-list" id="corrList"></div>
+            <button class="btn btn-sm" style="margin-top:6px;width:100%" id="rescanCorrBtn">↻ re-scan</button>
+          </div>
+        </div>
+
+        <div class="panel collapsed">
+          <div class="panel-h" data-toggle>Generation options <span class="chev">▾</span></div>
+          <div class="panel-b">
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono)"><input type="checkbox" id="optCookieMgr" checked> HTTP Cookie Manager</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optHeaderMgr" checked> Shared Header Manager</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optCacheMgr" checked> HTTP Cache Manager</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optThinkTime"> Add think time (uniform 500–1500ms)</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optAssertStatus" checked> Assert 2xx response codes</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optResultsTree" checked> Add View Results Tree (disabled)</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:5px"><input type="checkbox" id="optSummary" checked> Add Summary Report</label>
+          </div>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="toolbar">
+          <input type="search" id="searchInput" placeholder="filter by URL or method…">
+          <span style="margin-left:auto"></span>
+          <button class="btn btn-sm" id="selectAllBtn">select all visible</button>
+          <button class="btn btn-sm" id="selectNoneBtn">deselect all</button>
+          <button class="btn btn-sm" id="hideStaticBtn">↓ hide static</button>
+          <button class="btn btn-sm" id="assignPageBtn">→ assign page</button>
+          <button class="btn btn-sm" id="assignTxBtn">→ assign tx</button>
+        </div>
+        <div class="chips" id="filterChips"></div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:auto;max-height:calc(100vh - 240px)">
+          <table class="req-table">
+            <thead>
+              <tr>
+                <th style="width:32px"><input type="checkbox" id="masterCheck"></th>
+                <th style="width:60px">Method</th>
+                <th style="width:60px">Status</th>
+                <th>URL</th>
+                <th style="width:130px">Page</th>
+                <th style="width:130px">Transaction</th>
+              </tr>
+            </thead>
+            <tbody id="reqTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span id="footStatus">Ready</span>
+    <div class="actions">
+      <button class="btn btn-sm" id="resetBtn" style="display:none">⟲ load different HAR</button>
+      <button class="btn btn-sm" id="previewBtn" style="display:none">⌕ preview</button>
+      <button class="btn btn-primary btn-sm" id="generateBtn" style="display:none">↓ generate plan</button>
+    </div>
+  </footer>
+</div>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-h">
+    <h3 id="drawerTitle">Request</h3>
+    <button class="btn btn-sm btn-ghost" id="drawerClose">✕ close</button>
+  </div>
+  <div class="drawer-b" id="drawerBody"></div>
+</div>
+
+<div class="modal-bg" id="assignModal">
+  <div class="modal">
+    <h3 id="assignTitle">Assign</h3>
+    <p id="assignDesc"></p>
+    <div class="field">
+      <label id="assignLabel">Name</label>
+      <input id="assignInput" type="text" list="assignDatalist">
+      <datalist id="assignDatalist"></datalist>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-sm" id="assignCancel">cancel</button>
+      <button class="btn btn-primary btn-sm" id="assignConfirm">assign</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="previewModal">
+  <div class="modal" style="width:85vw;max-width:1100px">
+    <h3>Preview</h3>
+    <p id="previewMeta"></p>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn btn-sm" id="tabJmx" style="background:var(--bg-3)">plan.jmx</button>
+      <button class="btn btn-sm" id="tabCsv">data.csv</button>
+    </div>
+    <textarea id="previewBox" style="width:100%;height:55vh;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:10px;border-radius:3px" readonly></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-sm" id="previewClose">close</button>
+      <button class="btn btn-sm" id="copyBtn">⎘ copy current</button>
+      <button class="btn btn-primary btn-sm" id="downloadFromPreview">↓ download all</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================================================================
+// State
+// =====================================================================
+const state = {
+  har: null,
+  entries: [],
+  pages: [],            // [{ id, name, entryIds: Set }]
+  transactions: [],     // [{ id, name, entryIds: Set }]
+  correlations: [],     // [{ name, sourceEntryId, sourceField, location, sampleValue, jsonPath, applyTo: Set }]
+  parameters: [],       // [{ name, sampleValue, sources: [{entryId, location, field}], enabled }]
+  udv: [],              // [{ name, value }]
+  filterMethod: null,
+  filterHost: null,
+  hideStatic: false,
+  search: '',
+  selected: new Set(),
+};
+
+const STATIC_EXT = /\.(css|js|png|jpe?g|gif|svg|ico|woff2?|ttf|eot|map|webp|bmp)(\?|$)/i;
+const STATIC_TYPES = /^(image|font|stylesheet|media|other)$/i;
+const ANALYTICS_HOSTS = /(google-analytics|googletagmanager|doubleclick|hotjar|segment|mixpanel|amplitude|fullstory|datadog|newrelic|sentry|bugsnag|appdynamics|dynatrace)/i;
+
+// Field-name patterns suggestive of test-data parameters
+const PARAM_NAME_RE = /^(user(name)?|email|login|password|passwd|pwd|secret|otp|pin|mfa|amount|value|qty|quantity|account(Number|Id|No)?|fromAccount|toAccount|sourceAccount|destAccount|recipient|beneficiary|iban|swift|cardNumber|cardNo|cvv|expiry)$/i;
+
+// =====================================================================
+// Boot
+// =====================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initDrop();
+  initButtons();
+  initPanelToggle();
+});
+
+function initTheme() {
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur === 'light' ? '' : 'light');
+  });
+}
+
+function initPanelToggle() {
+  document.querySelectorAll('[data-toggle]').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+  });
+}
+
+function initDrop() {
+  const dz = document.getElementById('dropzone');
+  const fi = document.getElementById('fileInput');
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+}
+
+function initButtons() {
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  document.getElementById('selectAllBtn').addEventListener('click', () => selectAllVisible(true));
+  document.getElementById('selectNoneBtn').addEventListener('click', () => selectAllVisible(false));
+  document.getElementById('hideStaticBtn').addEventListener('click', toggleHideStatic);
+  document.getElementById('searchInput').addEventListener('input', e => { state.search = e.target.value.toLowerCase(); renderTable(); });
+  document.getElementById('masterCheck').addEventListener('change', e => selectAllVisible(e.target.checked));
+  document.getElementById('addPageBtn').addEventListener('click', () => addPage());
+  document.getElementById('redetectPagesBtn').addEventListener('click', () => { detectPages(); renderPages(); renderTable(); toast('Pages re-detected', 'ok'); });
+  document.getElementById('addTxBtn').addEventListener('click', () => addTransaction());
+  document.getElementById('addUdvBtn').addEventListener('click', addUdv);
+  document.getElementById('rescanCorrBtn').addEventListener('click', () => { detectCorrelations(); renderCorrelations(); renderTable(); toast('Correlations re-scanned', 'ok'); });
+  document.getElementById('rescanParamsBtn').addEventListener('click', () => { detectParameters(); renderParameters(); toast('Parameters re-scanned', 'ok'); });
+  document.getElementById('assignPageBtn').addEventListener('click', () => openAssignModal('page'));
+  document.getElementById('assignTxBtn').addEventListener('click', () => openAssignModal('tx'));
+  document.getElementById('assignCancel').addEventListener('click', () => document.getElementById('assignModal').classList.remove('show'));
+  document.getElementById('assignConfirm').addEventListener('click', confirmAssign);
+  document.getElementById('previewBtn').addEventListener('click', showPreview);
+  document.getElementById('previewClose').addEventListener('click', () => document.getElementById('previewModal').classList.remove('show'));
+  document.getElementById('copyBtn').addEventListener('click', copyCurrent);
+  document.getElementById('downloadFromPreview').addEventListener('click', () => { document.getElementById('previewModal').classList.remove('show'); generateAndDownload(); });
+  document.getElementById('generateBtn').addEventListener('click', generateAndDownload);
+  document.getElementById('resetBtn').addEventListener('click', resetApp);
+  document.getElementById('tabJmx').addEventListener('click', () => switchPreviewTab('jmx'));
+  document.getElementById('tabCsv').addEventListener('click', () => switchPreviewTab('csv'));
+}
+
+// =====================================================================
+// Loading
+// =====================================================================
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const har = JSON.parse(e.target.result);
+      if (!har.log || !Array.isArray(har.log.entries)) throw new Error('Invalid HAR: missing log.entries');
+      state.har = har;
+      state.entries = har.log.entries.map(normalizeEntry).filter(Boolean);
+      state.entries.forEach(en => state.selected.add(en.id));
+      document.getElementById('captureName').textContent = file.name.replace(/\.har$/i, '').slice(0, 22);
+      document.getElementById('importView').style.display = 'none';
+      document.getElementById('workspace').classList.add('active');
+      document.getElementById('previewBtn').style.display = '';
+      document.getElementById('generateBtn').style.display = '';
+      document.getElementById('resetBtn').style.display = '';
+      setStep(2);
+
+      // Auto-detect environment UDV from dominant host
+      const hostFreq = {};
+      state.entries.forEach(en => { hostFreq[en.host] = (hostFreq[en.host] || 0) + 1; });
+      const topHost = Object.entries(hostFreq).sort((a,b)=>b[1]-a[1])[0];
+      if (topHost) {
+        const sample = state.entries.find(en => en.host === topHost[0]);
+        state.udv = [
+          { name: 'protocol', value: sample.protocol },
+          { name: 'host', value: sample.host },
+          { name: 'port', value: sample.port || '' },
+        ];
+      }
+
+      detectPages();
+      detectParameters();
+      detectCorrelations();
+      renderAll();
+      toast(`Loaded ${state.entries.length} requests · ${state.pages.length} pages detected`, 'ok');
+    } catch (err) {
+      console.error(err);
+      toast('Failed to parse HAR: ' + err.message, 'err');
+    }
+  };
+  reader.onerror = () => toast('Failed to read file', 'err');
+  reader.readAsText(file);
+}
+
+function normalizeEntry(raw, idx) {
+  if (!raw.request || !raw.request.url) return null;
+  let urlObj;
+  try { urlObj = new URL(raw.request.url); } catch { return null; }
+  if (!/^https?:$/.test(urlObj.protocol)) return null;
+  return {
+    id: 'e' + idx,
+    method: raw.request.method,
+    url: raw.request.url,
+    protocol: urlObj.protocol.replace(':', ''),
+    host: urlObj.hostname,
+    port: urlObj.port,
+    path: urlObj.pathname + urlObj.search,
+    pathOnly: urlObj.pathname,
+    queryParams: [...urlObj.searchParams.entries()].map(([n,v]) => ({ name: n, value: v })),
+    headers: raw.request.headers || [],
+    cookies: raw.request.cookies || [],
+    postData: raw.request.postData || null,
+    status: raw.response ? raw.response.status : 0,
+    statusText: raw.response ? raw.response.statusText : '',
+    respHeaders: raw.response ? (raw.response.headers || []) : [],
+    respBody: raw.response && raw.response.content ? (raw.response.content.text || '') : '',
+    respMime: raw.response && raw.response.content ? (raw.response.content.mimeType || '') : '',
+    respSize: raw.response && raw.response.content ? (raw.response.content.size || 0) : 0,
+    time: raw.time || 0,
+    timestamp: raw.startedDateTime,
+    resourceType: raw._resourceType || guessResourceType(urlObj),
+  };
+}
+
+function guessResourceType(urlObj) {
+  const ext = (urlObj.pathname.match(/\.(\w+)(?:\?|$)/) || [])[1];
+  if (!ext) return 'xhr';
+  const m = ext.toLowerCase();
+  if (m === 'css') return 'stylesheet';
+  if (['js', 'mjs'].includes(m)) return 'script';
+  if (['png','jpg','jpeg','gif','svg','webp','ico','bmp'].includes(m)) return 'image';
+  if (['woff','woff2','ttf','otf','eot'].includes(m)) return 'font';
+  if (['html','htm'].includes(m)) return 'document';
+  return 'xhr';
+}
+
+// =====================================================================
+// Page detection
+// =====================================================================
+function detectPages() {
+  state.pages = [];
+  const sorted = [...state.entries].sort((a,b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return ta - tb;
+  });
+
+  let current = null;
+  let lastTime = 0;
+  let lastHost = null;
+
+  for (const e of sorted) {
+    const isStat = isStatic(e);
+    const t = e.timestamp ? new Date(e.timestamp).getTime() : 0;
+    const isDocLike = e.resourceType === 'document' || /text\/html/i.test(e.respMime || '');
+    const gap = lastTime ? (t - lastTime) / 1000 : 0;
+    const hostChange = lastHost && lastHost !== e.host;
+
+    // Static assets attach to the current page silently — they don't open new pages
+    if (isStat) {
+      if (current) current.entryIds.add(e.id);
+      // don't update lastTime for static so big gaps register correctly
+      continue;
+    }
+
+    const startNew = !current || isDocLike || gap > 3 || hostChange;
+    if (startNew) {
+      current = {
+        id: 'p' + state.pages.length,
+        name: derivePageName(e),
+        entryIds: new Set(),
+      };
+      state.pages.push(current);
+    }
+    current.entryIds.add(e.id);
+    lastTime = t;
+    lastHost = e.host;
+  }
+
+  // Make page names unique
+  const seen = {};
+  state.pages.forEach(p => {
+    if (seen[p.name] !== undefined) {
+      seen[p.name]++;
+      p.name = p.name + ' ' + seen[p.name];
+    } else {
+      seen[p.name] = 1;
+    }
+  });
+}
+
+function derivePageName(entry) {
+  let path = entry.pathOnly || '/';
+  // strip API-ish prefixes
+  path = path.replace(/^\/(api|v\d|rest|services|svc|gateway)\//i, '/');
+  const parts = path.split('/').filter(Boolean);
+  if (!parts.length) return 'Home';
+  // strip ID-like trailing segments (numbers, uuids, hashes)
+  const meaningful = parts.filter(p => !/^[\d\-a-f]{8,}$/i.test(p) && !/^\d+$/.test(p));
+  const pick = (meaningful.length ? meaningful : parts).slice(0, 2);
+  return pick.map(p => p.replace(/[-_.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' ').slice(0, 30) || 'Page';
+}
+
+// =====================================================================
+// Parameter detection
+// =====================================================================
+function detectParameters() {
+  const map = new Map();
+  state.entries.forEach(e => {
+    // Form-encoded body
+    if (e.postData && e.postData.params) {
+      e.postData.params.forEach(p => {
+        if (PARAM_NAME_RE.test(p.name)) addParamCandidate(map, p.name, p.value, e.id, 'form_param', p.name);
+      });
+    }
+    // JSON body
+    if (e.postData && e.postData.text && /json/i.test(e.postData.mimeType || '')) {
+      try {
+        const obj = JSON.parse(e.postData.text);
+        walkJson(obj, '', (path, value) => {
+          if (typeof value !== 'string' && typeof value !== 'number') return;
+          const key = path.split('.').pop().replace(/\[\d+\]$/, '');
+          if (PARAM_NAME_RE.test(key)) addParamCandidate(map, key, value, e.id, 'json_body', path);
+        });
+      } catch {}
+    }
+    // Query
+    e.queryParams.forEach(q => {
+      if (PARAM_NAME_RE.test(q.name)) addParamCandidate(map, q.name, q.value, e.id, 'query', q.name);
+    });
+  });
+
+  // Preserve existing enabled flags on re-scan
+  const prev = new Map(state.parameters.map(p => [p.name, p.enabled]));
+  state.parameters = [...map.values()].map(p => ({ ...p, enabled: prev.get(p.name) || false }));
+}
+
+function addParamCandidate(map, rawName, value, entryId, location, field) {
+  const norm = sanitizeVarName(rawName);
+  if (!map.has(norm)) {
+    map.set(norm, { name: norm, sampleValue: String(value), sources: [], enabled: false });
+  }
+  map.get(norm).sources.push({ entryId, location, field });
+}
+
+// =====================================================================
+// Correlation detection (responses → downstream usage)
+// =====================================================================
+function detectCorrelations() {
+  state.correlations = [];
+  const sortedEntries = [...state.entries].sort((a,b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return ta - tb;
+  });
+
+  const candidates = new Map();
+
+  sortedEntries.forEach(e => {
+    e.respHeaders.forEach(h => {
+      if (h.name.toLowerCase() === 'set-cookie') {
+        const m = h.value.match(/^([^=]+)=([^;]+)/);
+        if (m && m[2].length >= 8) {
+          const cookieName = m[1].trim();
+          if (/session|token|auth|csrf|jwt|sid/i.test(cookieName)) {
+            candidates.set(m[2], { sourceId: e.id, sourceField: cookieName, location: 'cookie', name: cookieName });
+          }
+        }
+      }
+    });
+    if (e.respBody && /json/i.test(e.respMime)) {
+      try {
+        const obj = JSON.parse(e.respBody);
+        walkJson(obj, '', (path, value) => {
+          if (typeof value !== 'string' && typeof value !== 'number') return;
+          const sv = String(value);
+          if (sv.length < 6) return;
+          const key = path.split('.').pop().replace(/\[\d+\]$/, '') || '';
+          if (/token|jwt|auth|session|csrf|nonce|tid|txn|trace|requestId|correlationId/i.test(key)) {
+            if (!candidates.has(sv)) {
+              candidates.set(sv, { sourceId: e.id, sourceField: path, location: 'response_body_json', name: key, jsonPath: '$.' + path });
+            }
+          }
+        });
+      } catch {}
+    }
+  });
+
+  candidates.forEach((meta, value) => {
+    const consumers = new Set();
+    const src = state.entries.find(e => e.id === meta.sourceId);
+    const sourceTime = src && src.timestamp ? new Date(src.timestamp).getTime() : 0;
+    sortedEntries.forEach(e => {
+      if (e.id === meta.sourceId) return;
+      const eTime = e.timestamp ? new Date(e.timestamp).getTime() : 0;
+      if (eTime <= sourceTime) return;
+      if (e.url.includes(value)) consumers.add(e.id);
+      else if (e.headers.some(h => (h.value || '').includes(value))) consumers.add(e.id);
+      else if (e.postData && e.postData.text && e.postData.text.includes(value)) consumers.add(e.id);
+    });
+    if (consumers.size > 0) {
+      state.correlations.push({
+        id: 'c' + state.correlations.length,
+        name: sanitizeVarName(meta.name),
+        sourceEntryId: meta.sourceId,
+        sourceField: meta.sourceField,
+        location: meta.location,
+        sampleValue: value,
+        jsonPath: meta.jsonPath,
+        applyTo: consumers,
+      });
+    }
+  });
+}
+
+function walkJson(obj, path, cb) {
+  if (obj && typeof obj === 'object') {
+    if (Array.isArray(obj)) obj.forEach((v, i) => walkJson(v, `${path}[${i}]`, cb));
+    else Object.entries(obj).forEach(([k, v]) => walkJson(v, path ? `${path}.${k}` : k, cb));
+  } else cb(path, obj);
+}
+
+function hasCorrelation(entry) {
+  return state.correlations.some(c => c.sourceEntryId === entry.id || c.applyTo.has(entry.id));
+}
+
+function hasEnabledParam(entry) {
+  return state.parameters.some(p => p.enabled && p.sources.some(s => s.entryId === entry.id));
+}
+
+// =====================================================================
+// Render
+// =====================================================================
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step-' + i);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  }
+}
+
+function renderAll() {
+  renderStats();
+  renderUdv();
+  renderPages();
+  renderTransactions();
+  renderParameters();
+  renderCorrelations();
+  renderChips();
+  renderTable();
+}
+
+function renderStats() {
+  document.getElementById('statTotal').textContent = state.entries.length;
+  document.getElementById('statSelected').textContent = state.selected.size;
+  const hosts = new Set(state.entries.map(e => e.host));
+  document.getElementById('statHosts').textContent = hosts.size;
+  const methods = {};
+  state.entries.forEach(e => { methods[e.method] = (methods[e.method] || 0) + 1; });
+  document.getElementById('statMethods').textContent = Object.entries(methods).map(([k,v]) => `${k}:${v}`).join(' ');
+  if (state.entries.length) {
+    const ts = state.entries.map(e => e.timestamp ? new Date(e.timestamp).getTime() : 0).filter(Boolean).sort();
+    if (ts.length >= 2) {
+      const dur = (ts[ts.length-1] - ts[0]) / 1000;
+      document.getElementById('statDuration').textContent = dur.toFixed(1) + 's';
+    }
+  }
+  updateFootStatus();
+}
+
+function renderUdv() {
+  document.getElementById('udvCount').textContent = state.udv.length;
+  const list = document.getElementById('udvList');
+  if (!state.udv.length) {
+    list.innerHTML = '<p class="hint-text">No variables yet.</p>';
+    return;
+  }
+  list.innerHTML = state.udv.map((v, i) => `
+    <div class="list-item-row" style="grid-template-columns: 90px 1fr auto">
+      <input type="text" data-udv-name="${i}" value="${escapeHtml(v.name)}" placeholder="name">
+      <input type="text" data-udv-val="${i}" value="${escapeHtml(v.value)}" placeholder="value">
+      <button class="del" data-udv-del="${i}">✕</button>
+    </div>`).join('');
+  list.querySelectorAll('[data-udv-name]').forEach(inp => {
+    inp.addEventListener('change', e => { state.udv[parseInt(e.target.dataset.udvName)].name = sanitizeVarName(e.target.value); renderUdv(); });
+  });
+  list.querySelectorAll('[data-udv-val]').forEach(inp => {
+    inp.addEventListener('change', e => { state.udv[parseInt(e.target.dataset.udvVal)].value = e.target.value; });
+  });
+  list.querySelectorAll('[data-udv-del]').forEach(btn => {
+    btn.addEventListener('click', e => { state.udv.splice(parseInt(e.target.dataset.udvDel), 1); renderUdv(); });
+  });
+}
+
+function addUdv() {
+  state.udv.push({ name: 'newVar', value: '' });
+  renderUdv();
+}
+
+function renderPages() {
+  document.getElementById('pageCount').textContent = state.pages.length;
+  const list = document.getElementById('pageList');
+  if (!state.pages.length) {
+    list.innerHTML = '<p class="hint-text">No pages yet. Click re-detect or add one manually.</p>';
+    return;
+  }
+  list.innerHTML = state.pages.map(p => `
+    <div class="list-item-row">
+      <input type="text" data-page-name="${p.id}" value="${escapeHtml(p.name)}">
+      <span style="display:flex;align-items:center;gap:4px"><span class="count">${p.entryIds.size}</span><button class="del" data-page-del="${p.id}">✕</button></span>
+    </div>`).join('');
+  list.querySelectorAll('[data-page-name]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const p = state.pages.find(x => x.id === e.target.dataset.pageName);
+      if (p) { p.name = e.target.value.trim() || p.name; renderTable(); }
+    });
+  });
+  list.querySelectorAll('[data-page-del]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      state.pages = state.pages.filter(p => p.id !== e.target.dataset.pageDel);
+      renderPages();
+      renderTable();
+    });
+  });
+}
+
+function addPage() {
+  const name = prompt('Page name:');
+  if (!name || !name.trim()) return;
+  state.pages.push({ id: 'p' + Date.now(), name: name.trim(), entryIds: new Set() });
+  renderPages();
+}
+
+function renderTransactions() {
+  const list = document.getElementById('txList');
+  document.getElementById('txCount').textContent = state.transactions.length;
+  if (!state.transactions.length) {
+    list.innerHTML = '<p class="hint-text">No transactions yet.</p>';
+    return;
+  }
+  list.innerHTML = state.transactions.map(t => `
+    <div class="list-item-row">
+      <input type="text" data-tx-name="${t.id}" value="${escapeHtml(t.name)}">
+      <span style="display:flex;align-items:center;gap:4px"><span class="count">${t.entryIds.size}</span><button class="del" data-tx-del="${t.id}">✕</button></span>
+    </div>`).join('');
+  list.querySelectorAll('[data-tx-name]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const t = state.transactions.find(x => x.id === e.target.dataset.txName);
+      if (t) { t.name = e.target.value.trim() || t.name; renderTable(); }
+    });
+  });
+  list.querySelectorAll('[data-tx-del]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      state.transactions = state.transactions.filter(t => t.id !== e.target.dataset.txDel);
+      renderTransactions();
+      renderTable();
+    });
+  });
+  updateFootStatus();
+}
+
+function addTransaction() {
+  const name = prompt('Transaction name:');
+  if (!name || !name.trim()) return;
+  state.transactions.push({ id: 't' + Date.now(), name: name.trim(), entryIds: new Set() });
+  renderTransactions();
+}
+
+function renderParameters() {
+  const list = document.getElementById('paramList');
+  const enabled = state.parameters.filter(p => p.enabled).length;
+  document.getElementById('paramCount').textContent = `${enabled}/${state.parameters.length}`;
+  if (!state.parameters.length) {
+    list.innerHTML = '<p class="hint-text">No parameter candidates detected.</p>';
+    return;
+  }
+  list.innerHTML = state.parameters.map((p, i) => `
+    <div class="param-item ${p.enabled ? '' : 'disabled'}">
+      <div class="name"><input type="checkbox" ${p.enabled ? 'checked' : ''} data-param-en="${i}"> \${${escapeHtml(p.name)}}</div>
+      <input class="value" data-param-val="${i}" value="${escapeHtml(p.sampleValue)}" placeholder="default value">
+      <div class="meta">used in ${p.sources.length} request${p.sources.length === 1 ? '' : 's'} · ${escapeHtml([...new Set(p.sources.map(s => s.location))].join(', '))}</div>
+    </div>`).join('');
+  list.querySelectorAll('[data-param-en]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      state.parameters[parseInt(e.target.dataset.paramEn)].enabled = e.target.checked;
+      renderParameters();
+      renderTable();
+    });
+  });
+  list.querySelectorAll('[data-param-val]').forEach(inp => {
+    inp.addEventListener('change', e => { state.parameters[parseInt(e.target.dataset.paramVal)].sampleValue = e.target.value; });
+  });
+}
+
+function renderCorrelations() {
+  const list = document.getElementById('corrList');
+  document.getElementById('corrCount').textContent = state.correlations.length;
+  if (!state.correlations.length) {
+    list.innerHTML = '<p class="hint-text">No dynamic values detected.</p>';
+    return;
+  }
+  list.innerHTML = state.correlations.map(c => {
+    const src = state.entries.find(e => e.id === c.sourceEntryId);
+    const srcLabel = src ? truncate(src.pathOnly, 30) : '?';
+    const srcType = c.location === 'cookie' ? 'Set-Cookie' : 'JSON $';
+    return `<div class="corr-item">
+      <div class="name">\${${escapeHtml(c.name)}}</div>
+      <div class="meta">extract: ${srcType} <code>${escapeHtml(c.sourceField)}</code></div>
+      <div class="meta">from: ${escapeHtml(srcLabel)} <span class="arrow">→</span> applies to ${c.applyTo.size} request${c.applyTo.size === 1 ? '' : 's'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderChips() {
+  const chips = document.getElementById('filterChips');
+  const methods = [...new Set(state.entries.map(e => e.method))].sort();
+  const hosts = [...new Set(state.entries.map(e => e.host))].sort();
+  let html = '';
+  html += `<span class="chip ${!state.filterMethod ? 'on' : ''}" data-m="">all methods</span>`;
+  methods.forEach(m => { html += `<span class="chip ${state.filterMethod === m ? 'on' : ''}" data-m="${m}">${m}</span>`; });
+  html += `<span class="chip ${!state.filterHost ? 'on' : ''}" data-h="">all hosts</span>`;
+  hosts.slice(0, 8).forEach(h => { html += `<span class="chip ${state.filterHost === h ? 'on' : ''}" data-h="${h}">${escapeHtml(h)}</span>`; });
+  chips.innerHTML = html;
+  chips.querySelectorAll('[data-m]').forEach(el => {
+    el.addEventListener('click', () => { state.filterMethod = el.dataset.m || null; renderChips(); renderTable(); });
+  });
+  chips.querySelectorAll('[data-h]').forEach(el => {
+    el.addEventListener('click', () => { state.filterHost = el.dataset.h || null; renderChips(); renderTable(); });
+  });
+}
+
+function visibleEntries() {
+  return state.entries.filter(e => {
+    if (state.filterMethod && e.method !== state.filterMethod) return false;
+    if (state.filterHost && e.host !== state.filterHost) return false;
+    if (state.hideStatic && isStatic(e)) return false;
+    if (state.search) {
+      const q = state.search;
+      if (!e.url.toLowerCase().includes(q) && !e.method.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function isStatic(e) {
+  if (STATIC_EXT.test(e.pathOnly)) return true;
+  if (STATIC_TYPES.test(e.resourceType)) return true;
+  if (ANALYTICS_HOSTS.test(e.host)) return true;
+  return false;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('reqTableBody');
+  const visible = visibleEntries();
+  if (!visible.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">No requests match the current filters</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = visible.map(e => {
+    const tx = state.transactions.find(t => t.entryIds.has(e.id));
+    const page = state.pages.find(p => p.entryIds.has(e.id));
+    const isSel = state.selected.has(e.id);
+    const flags = (hasCorrelation(e) ? '<span class="corr-flag" title="correlation"></span>' : '')
+                + (hasEnabledParam(e) ? '<span class="param-flag" title="parameter"></span>' : '');
+    const sClass = e.status >= 200 && e.status < 300 ? 's2'
+                : e.status >= 300 && e.status < 400 ? 's3'
+                : e.status >= 400 && e.status < 500 ? 's4'
+                : e.status >= 500 ? 's5' : '';
+    const shortUrl = `<span class="host">${escapeHtml(e.host)}</span>${escapeHtml(truncate(e.path, 75))}`;
+    return `<tr class="${isSel ? 'selected' : ''}" data-id="${e.id}">
+      <td><input type="checkbox" data-sel="${e.id}" ${isSel ? 'checked' : ''}></td>
+      <td><span class="method m-${e.method}">${e.method}</span></td>
+      <td><span class="status ${sClass}">${e.status || '—'}</span></td>
+      <td class="url-cell" data-detail="${e.id}" style="cursor:pointer">${flags}${shortUrl}</td>
+      <td>${page ? `<span class="tag pg">${escapeHtml(page.name)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+      <td>${tx ? `<span class="tag tx">${escapeHtml(tx.name)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-sel]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const id = e.target.dataset.sel;
+      if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
+      e.target.closest('tr').classList.toggle('selected', e.target.checked);
+      renderStats();
+    });
+  });
+  tbody.querySelectorAll('[data-detail]').forEach(td => {
+    td.addEventListener('click', () => openDrawer(td.dataset.detail));
+  });
+}
+
+function selectAllVisible(s) {
+  visibleEntries().forEach(e => { if (s) state.selected.add(e.id); else state.selected.delete(e.id); });
+  renderTable();
+  renderStats();
+}
+
+function toggleHideStatic() {
+  state.hideStatic = !state.hideStatic;
+  const btn = document.getElementById('hideStaticBtn');
+  btn.textContent = state.hideStatic ? '↑ show static' : '↓ hide static';
+  btn.style.color = state.hideStatic ? 'var(--accent)' : '';
+  renderTable();
+}
+
+function updateFootStatus() {
+  const fs = document.getElementById('footStatus');
+  if (!state.entries.length) { fs.textContent = 'Ready'; return; }
+  const enabledParams = state.parameters.filter(p => p.enabled).length;
+  fs.textContent = `${state.selected.size} selected · ${state.pages.length} pages · ${state.transactions.length} transactions · ${enabledParams} params · ${state.correlations.length} correlations`;
+}
+
+// =====================================================================
+// Drawer
+// =====================================================================
+function openDrawer(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('drawerTitle').textContent = `${e.method} ${e.pathOnly}`;
+  let html = '';
+  html += `<div class="drawer-section"><h4>URL</h4><div class="kv">${escapeHtml(e.url)}</div></div>`;
+  html += `<div class="drawer-section"><h4>Status</h4><div class="kv">${e.status} ${escapeHtml(e.statusText || '')}</div></div>`;
+
+  if (e.queryParams.length) {
+    html += `<div class="drawer-section"><h4>Query parameters · click ⊕ to parameterize</h4><div class="kv">`;
+    e.queryParams.forEach(q => {
+      const isParam = state.parameters.find(p => p.enabled && p.name === sanitizeVarName(q.name) && p.sources.some(s => s.entryId === e.id && s.location === 'query'));
+      html += `<div class="row">
+        <span class="k">${escapeHtml(q.name)}</span><span>=</span>
+        <span class="v">${escapeHtml(q.value)}</span>
+        <button class="pbtn ${isParam ? 'active' : ''}" data-pquery="${escapeHtml(q.name)}|${escapeHtml(q.value)}|${e.id}">${isParam ? '✓ csv' : '⊕ csv'}</button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+  if (e.headers.length) {
+    html += `<div class="drawer-section"><h4>Request headers</h4><div class="kv">`;
+    e.headers.forEach(h => {
+      html += `<div class="row"><span class="k">${escapeHtml(h.name)}</span>:&nbsp;<span class="v">${escapeHtml(h.value)}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+  if (e.postData && e.postData.text) {
+    html += `<div class="drawer-section"><h4>Request body (${escapeHtml(e.postData.mimeType || '')})</h4>`;
+    if (e.postData.params && e.postData.params.length) {
+      html += `<div class="kv">`;
+      e.postData.params.forEach(p => {
+        const isParam = state.parameters.find(pp => pp.enabled && pp.name === sanitizeVarName(p.name) && pp.sources.some(s => s.entryId === e.id && s.location === 'form_param'));
+        html += `<div class="row">
+          <span class="k">${escapeHtml(p.name)}</span><span>=</span>
+          <span class="v">${escapeHtml(p.value || '')}</span>
+          <button class="pbtn ${isParam ? 'active' : ''}" data-pform="${escapeHtml(p.name)}|${escapeHtml(p.value || '')}|${e.id}">${isParam ? '✓ csv' : '⊕ csv'}</button>
+        </div>`;
+      });
+      html += `</div>`;
+    } else {
+      html += `<pre class="body-pre">${escapeHtml(e.postData.text)}</pre>`;
+    }
+    html += `</div>`;
+  }
+  if (e.respHeaders.length) {
+    html += `<div class="drawer-section"><h4>Response headers</h4><div class="kv">`;
+    e.respHeaders.forEach(h => {
+      html += `<div class="row"><span class="k">${escapeHtml(h.name)}</span>:&nbsp;<span class="v">${escapeHtml(h.value)}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+  if (e.respBody) {
+    const preview = e.respBody.length > 4000 ? e.respBody.slice(0, 4000) + '\n\n…[truncated]' : e.respBody;
+    html += `<div class="drawer-section"><h4>Response body (${escapeHtml(e.respMime || '')})</h4><pre class="body-pre">${escapeHtml(preview)}</pre></div>`;
+  }
+  document.getElementById('drawerBody').innerHTML = html;
+  // Wire param buttons
+  document.querySelectorAll('[data-pquery], [data-pform]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const data = btn.dataset.pquery || btn.dataset.pform;
+      const loc = btn.dataset.pquery ? 'query' : 'form_param';
+      const [name, value, entryId] = data.split('|');
+      toggleParameter(name, value, entryId, loc);
+      openDrawer(id);
+      renderTable();
+      renderParameters();
+    });
+  });
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
+
+function toggleParameter(name, value, entryId, location) {
+  const norm = sanitizeVarName(name);
+  let p = state.parameters.find(x => x.name === norm);
+  if (!p) {
+    p = { name: norm, sampleValue: value, sources: [{ entryId, location, field: name }], enabled: true };
+    state.parameters.push(p);
+  } else {
+    p.enabled = !p.enabled;
+    if (!p.sources.some(s => s.entryId === entryId && s.location === location)) {
+      p.sources.push({ entryId, location, field: name });
+    }
+  }
+}
+
+// =====================================================================
+// Assignment modal (pages or transactions)
+// =====================================================================
+let assignKind = 'page';
+function openAssignModal(kind) {
+  const sel = visibleEntries().filter(e => state.selected.has(e.id));
+  if (!sel.length) { toast('Tick some rows first', 'err'); return; }
+  assignKind = kind;
+  const isPage = kind === 'page';
+  document.getElementById('assignTitle').textContent = isPage ? 'Assign to page' : 'Assign to transaction';
+  document.getElementById('assignDesc').textContent = isPage
+    ? 'Pages map to Simple Controllers in the JMX. Pick existing or type a new name.'
+    : 'Transactions map to Transaction Controllers (measured timings). Pick existing or type a new name.';
+  document.getElementById('assignLabel').textContent = isPage ? 'Page name' : 'Transaction name';
+  document.getElementById('assignInput').value = '';
+  const dl = document.getElementById('assignDatalist');
+  const opts = isPage ? state.pages : state.transactions;
+  dl.innerHTML = opts.map(o => `<option value="${escapeHtml(o.name)}">`).join('');
+  document.getElementById('assignModal').classList.add('show');
+  setTimeout(() => document.getElementById('assignInput').focus(), 50);
+}
+
+function confirmAssign() {
+  const name = document.getElementById('assignInput').value.trim();
+  if (!name) { toast('Enter a name', 'err'); return; }
+  const sel = visibleEntries().filter(e => state.selected.has(e.id));
+  const list = assignKind === 'page' ? state.pages : state.transactions;
+  let item = list.find(x => x.name === name);
+  if (!item) {
+    item = { id: (assignKind === 'page' ? 'p' : 't') + Date.now(), name, entryIds: new Set() };
+    list.push(item);
+  }
+  list.forEach(x => sel.forEach(e => x.entryIds.delete(e.id)));
+  sel.forEach(e => item.entryIds.add(e.id));
+  document.getElementById('assignModal').classList.remove('show');
+  if (assignKind === 'page') renderPages(); else renderTransactions();
+  renderTable();
+  toast(`Assigned ${sel.length} requests to ${assignKind} "${name}"`, 'ok');
+}
+
+// =====================================================================
+// JMX generation — proper project layout
+// =====================================================================
+function generateJmx() {
+  const planName = document.getElementById('planName').value.trim() || 'LPT Plan';
+  const threads = parseInt(document.getElementById('threads').value) || 1;
+  const rampup = parseInt(document.getElementById('rampup').value) || 0;
+  const loops = parseInt(document.getElementById('loops').value) || 1;
+  const duration = parseInt(document.getElementById('duration').value) || 0;
+
+  const opts = {
+    cookieMgr: document.getElementById('optCookieMgr').checked,
+    headerMgr: document.getElementById('optHeaderMgr').checked,
+    cacheMgr: document.getElementById('optCacheMgr').checked,
+    thinkTime: document.getElementById('optThinkTime').checked,
+    assertStatus: document.getElementById('optAssertStatus').checked,
+    resultsTree: document.getElementById('optResultsTree').checked,
+    summary: document.getElementById('optSummary').checked,
+  };
+
+  const enabledParams = state.parameters.filter(p => p.enabled);
+  const useCsv = enabledParams.length > 0;
+
+  // Selected entries in time order
+  const ordered = state.entries
+    .filter(e => state.selected.has(e.id))
+    .sort((a,b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return ta - tb;
+    });
+
+  // Determine UDV-known host info for HTTP Defaults
+  const udvByName = Object.fromEntries(state.udv.map(v => [v.name, v.value]));
+  const defaultHost = udvByName.host || '';
+  const defaultProto = udvByName.protocol || 'https';
+  const defaultPort = udvByName.port || '';
+
+  // Group selected entries: pages → transactions → samplers
+  // entriesByPage: pageId -> [entry...]
+  // pageless entries go into a synthetic "Other" bucket only if there's at least one
+  const entriesByPage = new Map();
+  const pageOrder = [];
+  const otherEntries = [];
+
+  // Maintain page encounter order based on first selected entry per page
+  state.pages.forEach(p => {
+    const inPage = ordered.filter(e => p.entryIds.has(e.id));
+    if (inPage.length) {
+      entriesByPage.set(p.id, inPage);
+      pageOrder.push(p);
+    }
+  });
+  ordered.forEach(e => {
+    if (!state.pages.some(p => p.entryIds.has(e.id))) otherEntries.push(e);
+  });
+
+  // For each page, split entries into transactions (encounter order)
+  function splitByTx(entries) {
+    const groups = []; // [{kind:'tx'|'flat', name?, entries:[]}]
+    const consumed = new Set();
+    entries.forEach(e => {
+      if (consumed.has(e.id)) return;
+      const tx = state.transactions.find(t => t.entryIds.has(e.id));
+      if (tx) {
+        const tEntries = entries.filter(x => tx.entryIds.has(x.id));
+        tEntries.forEach(x => consumed.add(x.id));
+        groups.push({ kind: 'tx', name: tx.name, entries: tEntries });
+      } else {
+        consumed.add(e.id);
+        groups.push({ kind: 'flat', entries: [e] });
+      }
+    });
+    return groups;
+  }
+
+  // Common headers for shared HeaderManager
+  const commonHeaders = opts.headerMgr ? computeCommonHeaders(ordered) : [];
+  const commonHdrSet = new Set(commonHeaders.map(h => h.name.toLowerCase()));
+
+  // ---- BUILD XML ----
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">\n';
+  xml += '  <hashTree>\n';
+
+  // TestPlan with embedded UDV
+  xml += `    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="${esc(planName)}" enabled="true">\n`;
+  xml += '      <stringProp name="TestPlan.comments">Generated from HAR · har2jmx v2 · project layout</stringProp>\n';
+  xml += '      <boolProp name="TestPlan.functional_mode">false</boolProp>\n';
+  xml += '      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>\n';
+  xml += '      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>\n';
+  xml += '      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">\n';
+  xml += '        <collectionProp name="Arguments.arguments">\n';
+  state.udv.forEach(v => {
+    xml += `          <elementProp name="${esc(v.name)}" elementType="Argument">\n`;
+    xml += `            <stringProp name="Argument.name">${esc(v.name)}</stringProp>\n`;
+    xml += `            <stringProp name="Argument.value">${esc(v.value)}</stringProp>\n`;
+    xml += '            <stringProp name="Argument.metadata">=</stringProp>\n';
+    xml += '          </elementProp>\n';
+  });
+  xml += '        </collectionProp>\n';
+  xml += '      </elementProp>\n';
+  xml += '      <stringProp name="TestPlan.user_define_classpath"></stringProp>\n';
+  xml += '    </TestPlan>\n';
+  xml += '    <hashTree>\n';
+
+  // HTTP Request Defaults — uses ${host} ${protocol} ${port}
+  xml += '      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">\n';
+  xml += '        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true"><collectionProp name="Arguments.arguments"/></elementProp>\n';
+  xml += `        <stringProp name="HTTPSampler.domain">\${host}</stringProp>\n`;
+  xml += `        <stringProp name="HTTPSampler.port">\${port}</stringProp>\n`;
+  xml += `        <stringProp name="HTTPSampler.protocol">\${protocol}</stringProp>\n`;
+  xml += '        <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>\n';
+  xml += '        <stringProp name="HTTPSampler.path"></stringProp>\n';
+  xml += '        <stringProp name="HTTPSampler.concurrentPool">6</stringProp>\n';
+  xml += '        <stringProp name="HTTPSampler.connect_timeout">30000</stringProp>\n';
+  xml += '        <stringProp name="HTTPSampler.response_timeout">60000</stringProp>\n';
+  xml += '      </ConfigTestElement>\n';
+  xml += '      <hashTree/>\n';
+
+  // CSV Data Set Config
+  if (useCsv) {
+    xml += '      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">\n';
+    xml += '        <stringProp name="filename">data.csv</stringProp>\n';
+    xml += '        <stringProp name="fileEncoding">UTF-8</stringProp>\n';
+    xml += `        <stringProp name="variableNames">${esc(enabledParams.map(p => p.name).join(','))}</stringProp>\n`;
+    xml += '        <stringProp name="delimiter">,</stringProp>\n';
+    xml += '        <boolProp name="quotedData">true</boolProp>\n';
+    xml += '        <boolProp name="recycle">true</boolProp>\n';
+    xml += '        <boolProp name="stopThread">false</boolProp>\n';
+    xml += '        <stringProp name="shareMode">shareMode.all</stringProp>\n';
+    xml += '        <boolProp name="ignoreFirstLine">true</boolProp>\n';
+    xml += '      </CSVDataSet>\n';
+    xml += '      <hashTree/>\n';
+  }
+
+  // Cookie / Cache / Header managers
+  if (opts.cookieMgr) {
+    xml += '      <CookieManager guiclass="CookiePanel" testclass="CookieManager" testname="HTTP Cookie Manager" enabled="true">\n';
+    xml += '        <collectionProp name="CookieManager.cookies"/>\n';
+    xml += '        <boolProp name="CookieManager.clearEachIteration">true</boolProp>\n';
+    xml += '        <boolProp name="CookieManager.controlledByThreadGroup">false</boolProp>\n';
+    xml += '      </CookieManager>\n';
+    xml += '      <hashTree/>\n';
+  }
+  if (opts.cacheMgr) {
+    xml += '      <CacheManager guiclass="CacheManagerGui" testclass="CacheManager" testname="HTTP Cache Manager" enabled="true">\n';
+    xml += '        <boolProp name="clearEachIteration">true</boolProp>\n';
+    xml += '        <boolProp name="useExpires">true</boolProp>\n';
+    xml += '        <boolProp name="CacheManager.controlledByThread">false</boolProp>\n';
+    xml += '      </CacheManager>\n';
+    xml += '      <hashTree/>\n';
+  }
+  if (opts.headerMgr && commonHeaders.length) {
+    xml += '      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">\n';
+    xml += '        <collectionProp name="HeaderManager.headers">\n';
+    commonHeaders.forEach(h => {
+      xml += '          <elementProp name="" elementType="Header">\n';
+      xml += `            <stringProp name="Header.name">${esc(h.name)}</stringProp>\n`;
+      xml += `            <stringProp name="Header.value">${esc(h.value)}</stringProp>\n`;
+      xml += '          </elementProp>\n';
+    });
+    xml += '        </collectionProp>\n';
+    xml += '      </HeaderManager>\n';
+    xml += '      <hashTree/>\n';
+  }
+
+  // Single Thread Group "Users"
+  xml += '      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Users" enabled="true">\n';
+  xml += '        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>\n';
+  xml += '        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">\n';
+  xml += `          <boolProp name="LoopController.continue_forever">${duration > 0 ? 'true' : 'false'}</boolProp>\n`;
+  xml += `          <stringProp name="LoopController.loops">${duration > 0 ? '-1' : loops}</stringProp>\n`;
+  xml += '        </elementProp>\n';
+  xml += `        <stringProp name="ThreadGroup.num_threads">${threads}</stringProp>\n`;
+  xml += `        <stringProp name="ThreadGroup.ramp_time">${rampup}</stringProp>\n`;
+  xml += '        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>\n';
+  xml += `        <boolProp name="ThreadGroup.scheduler">${duration > 0 ? 'true' : 'false'}</boolProp>\n`;
+  xml += `        <stringProp name="ThreadGroup.duration">${duration}</stringProp>\n`;
+  xml += '        <stringProp name="ThreadGroup.delay"></stringProp>\n';
+  xml += '      </ThreadGroup>\n';
+  xml += '      <hashTree>\n';
+
+  // Pages → Simple Controllers → Transactions → Samplers
+  pageOrder.forEach(p => {
+    xml += `        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="${esc(p.name)}" enabled="true"/>\n`;
+    xml += '        <hashTree>\n';
+    const groups = splitByTx(entriesByPage.get(p.id));
+    groups.forEach(g => {
+      if (g.kind === 'tx') {
+        xml += `          <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="${esc(g.name)}" enabled="true">\n`;
+        xml += '            <boolProp name="TransactionController.includeTimers">false</boolProp>\n';
+        xml += '            <boolProp name="TransactionController.parent">true</boolProp>\n';
+        xml += '          </TransactionController>\n';
+        xml += '          <hashTree>\n';
+        g.entries.forEach(e => xml += emitSampler(e, '            ', commonHdrSet, opts, defaultHost, defaultProto, defaultPort, enabledParams));
+        xml += '          </hashTree>\n';
+      } else {
+        g.entries.forEach(e => xml += emitSampler(e, '          ', commonHdrSet, opts, defaultHost, defaultProto, defaultPort, enabledParams));
+      }
+    });
+    xml += '        </hashTree>\n';
+  });
+
+  // Pageless entries — under their own "Other" Simple Controller for clarity
+  if (otherEntries.length) {
+    xml += '        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Other (unassigned)" enabled="true"/>\n';
+    xml += '        <hashTree>\n';
+    const groups = splitByTx(otherEntries);
+    groups.forEach(g => {
+      if (g.kind === 'tx') {
+        xml += `          <TransactionController guiclass="TransactionControllerGui" testclass="TransactionController" testname="${esc(g.name)}" enabled="true">\n`;
+        xml += '            <boolProp name="TransactionController.includeTimers">false</boolProp>\n';
+        xml += '            <boolProp name="TransactionController.parent">true</boolProp>\n';
+        xml += '          </TransactionController>\n';
+        xml += '          <hashTree>\n';
+        g.entries.forEach(e => xml += emitSampler(e, '            ', commonHdrSet, opts, defaultHost, defaultProto, defaultPort, enabledParams));
+        xml += '          </hashTree>\n';
+      } else {
+        g.entries.forEach(e => xml += emitSampler(e, '          ', commonHdrSet, opts, defaultHost, defaultProto, defaultPort, enabledParams));
+      }
+    });
+    xml += '        </hashTree>\n';
+  }
+
+  // Think time (thread-group-level)
+  if (opts.thinkTime) {
+    xml += '        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Think Time" enabled="true">\n';
+    xml += '          <stringProp name="ConstantTimer.delay">500</stringProp>\n';
+    xml += '          <stringProp name="RandomTimer.range">1000</stringProp>\n';
+    xml += '        </UniformRandomTimer>\n';
+    xml += '        <hashTree/>\n';
+  }
+
+  // Listeners inside thread group
+  if (opts.resultsTree) {
+    xml += '        <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="false">\n';
+    xml += '          <boolProp name="ResultCollector.error_logging">false</boolProp>\n';
+    xml += '          <objProp><name>saveConfig</name><value class="SampleSaveConfiguration"><time>true</time><latency>true</latency><timestamp>true</timestamp><success>true</success><label>true</label><code>true</code><message>true</message><threadName>true</threadName><dataType>true</dataType><encoding>false</encoding><assertions>true</assertions><subresults>true</subresults><responseData>false</responseData><samplerData>false</samplerData><xml>false</xml><fieldNames>true</fieldNames><responseHeaders>false</responseHeaders><requestHeaders>false</requestHeaders><responseDataOnError>false</responseDataOnError><saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage><assertionsResultsToSave>0</assertionsResultsToSave><bytes>true</bytes><sentBytes>true</sentBytes><url>true</url><threadCounts>true</threadCounts><idleTime>true</idleTime><connectTime>true</connectTime></value></objProp>\n';
+    xml += '          <stringProp name="filename"></stringProp>\n';
+    xml += '        </ResultCollector>\n';
+    xml += '        <hashTree/>\n';
+  }
+  if (opts.summary) {
+    xml += '        <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">\n';
+    xml += '          <boolProp name="ResultCollector.error_logging">false</boolProp>\n';
+    xml += '          <objProp><name>saveConfig</name><value class="SampleSaveConfiguration"><time>true</time><latency>true</latency><timestamp>true</timestamp><success>true</success><label>true</label><code>true</code><message>true</message><threadName>true</threadName><dataType>true</dataType><encoding>false</encoding><assertions>true</assertions><subresults>true</subresults><responseData>false</responseData><samplerData>false</samplerData><xml>false</xml><fieldNames>true</fieldNames><responseHeaders>false</responseHeaders><requestHeaders>false</requestHeaders><responseDataOnError>false</responseDataOnError><saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage><assertionsResultsToSave>0</assertionsResultsToSave><bytes>true</bytes><sentBytes>true</sentBytes><url>true</url><threadCounts>true</threadCounts><idleTime>true</idleTime><connectTime>true</connectTime></value></objProp>\n';
+    xml += '          <stringProp name="filename"></stringProp>\n';
+    xml += '        </ResultCollector>\n';
+    xml += '        <hashTree/>\n';
+  }
+
+  xml += '      </hashTree>\n'; // end ThreadGroup hashTree
+  xml += '    </hashTree>\n';   // end TestPlan hashTree
+  xml += '  </hashTree>\n';
+  xml += '</jmeterTestPlan>\n';
+  return xml;
+}
+
+function computeCommonHeaders(entries) {
+  if (!entries.length) return [];
+  const exclude = new Set(['cookie', 'content-length', 'host', 'authorization', 'content-type']);
+  const counts = {};
+  entries.forEach(e => {
+    const seen = new Set();
+    e.headers.forEach(h => {
+      const k = h.name.toLowerCase();
+      if (exclude.has(k) || k.startsWith(':')) return;
+      if (seen.has(k)) return;
+      seen.add(k);
+      const key = k + '|' + h.value;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+  });
+  const threshold = Math.max(2, Math.ceil(entries.length * 0.7));
+  const out = [];
+  Object.entries(counts).forEach(([key, c]) => {
+    if (c >= threshold) {
+      const [name, ...rest] = key.split('|');
+      out.push({ name, value: rest.join('|') });
+    }
+  });
+  return out;
+}
+
+function emitSampler(e, indent, commonHdrSet, opts, defHost, defProto, defPort, enabledParams) {
+  // Apply correlation + parameter substitutions
+  const subs = []; // {pattern, replacement}
+  state.correlations.forEach(c => {
+    if (c.applyTo.has(e.id) && c.sampleValue) subs.push({ pattern: c.sampleValue, replacement: '${' + c.name + '}' });
+  });
+  enabledParams.forEach(p => {
+    p.sources.filter(s => s.entryId === e.id).forEach(() => {
+      if (p.sampleValue) subs.push({ pattern: p.sampleValue, replacement: '${' + p.name + '}' });
+    });
+  });
+
+  function applySubs(str) {
+    if (!str) return str;
+    let r = str;
+    subs.forEach(s => { r = r.split(s.pattern).join(s.replacement); });
+    return r;
+  }
+
+  const path = applySubs(e.path);
+  const useDefaults = (e.host === defHost && e.protocol === defProto && (e.port || '') === (defPort || ''));
+  const ct = (e.headers.find(h => h.name.toLowerCase() === 'content-type') || {}).value || '';
+  const isMultipart = /multipart/i.test(ct);
+  const isFormBody = e.postData && e.postData.params && e.postData.params.length > 0;
+  const bodyText = e.postData ? applySubs(e.postData.text || '') : '';
+
+  let s = '';
+  s += `${indent}<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="${esc(e.method + ' ' + truncate(e.pathOnly, 60))}" enabled="true">\n`;
+  s += `${indent}  <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">\n`;
+  s += `${indent}    <collectionProp name="Arguments.arguments">\n`;
+  if (isFormBody) {
+    e.postData.params.forEach(p => {
+      const v = applySubs(p.value || '');
+      s += `${indent}      <elementProp name="${esc(p.name)}" elementType="HTTPArgument">\n`;
+      s += `${indent}        <boolProp name="HTTPArgument.always_encode">true</boolProp>\n`;
+      s += `${indent}        <stringProp name="Argument.value">${esc(v)}</stringProp>\n`;
+      s += `${indent}        <stringProp name="Argument.metadata">=</stringProp>\n`;
+      s += `${indent}        <boolProp name="HTTPArgument.use_equals">true</boolProp>\n`;
+      s += `${indent}        <stringProp name="Argument.name">${esc(p.name)}</stringProp>\n`;
+      s += `${indent}      </elementProp>\n`;
+    });
+  } else if (bodyText) {
+    s += `${indent}      <elementProp name="" elementType="HTTPArgument">\n`;
+    s += `${indent}        <boolProp name="HTTPArgument.always_encode">false</boolProp>\n`;
+    s += `${indent}        <stringProp name="Argument.value">${esc(bodyText)}</stringProp>\n`;
+    s += `${indent}        <stringProp name="Argument.metadata">=</stringProp>\n`;
+    s += `${indent}      </elementProp>\n`;
+  }
+  s += `${indent}    </collectionProp>\n`;
+  s += `${indent}  </elementProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.domain">${useDefaults ? '' : esc(e.host)}</stringProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.port">${useDefaults ? '' : esc(e.port || '')}</stringProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.protocol">${useDefaults ? '' : esc(e.protocol)}</stringProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.path">${esc(path)}</stringProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.method">${esc(e.method)}</stringProp>\n`;
+  s += `${indent}  <boolProp name="HTTPSampler.follow_redirects">true</boolProp>\n`;
+  s += `${indent}  <boolProp name="HTTPSampler.auto_redirects">false</boolProp>\n`;
+  s += `${indent}  <boolProp name="HTTPSampler.use_keepalive">true</boolProp>\n`;
+  s += `${indent}  <boolProp name="HTTPSampler.DO_MULTIPART_POST">${isMultipart ? 'true' : 'false'}</boolProp>\n`;
+  s += `${indent}  <stringProp name="HTTPSampler.embedded_url_re"></stringProp>\n`;
+  if (bodyText && !isFormBody) {
+    s += `${indent}  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>\n`;
+  }
+  s += `${indent}</HTTPSamplerProxy>\n`;
+  s += `${indent}<hashTree>\n`;
+
+  // Per-sampler header manager
+  const perHeaders = e.headers.filter(h => {
+    const k = h.name.toLowerCase();
+    if (k.startsWith(':')) return false;
+    if (k === 'cookie' || k === 'content-length' || k === 'host') return false;
+    if (commonHdrSet.has(k)) return false;
+    return true;
+  });
+  if (perHeaders.length) {
+    s += `${indent}  <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Request Headers" enabled="true">\n`;
+    s += `${indent}    <collectionProp name="HeaderManager.headers">\n`;
+    perHeaders.forEach(h => {
+      const v = applySubs(h.value || '');
+      s += `${indent}      <elementProp name="" elementType="Header">\n`;
+      s += `${indent}        <stringProp name="Header.name">${esc(h.name)}</stringProp>\n`;
+      s += `${indent}        <stringProp name="Header.value">${esc(v)}</stringProp>\n`;
+      s += `${indent}      </elementProp>\n`;
+    });
+    s += `${indent}    </collectionProp>\n`;
+    s += `${indent}  </HeaderManager>\n`;
+    s += `${indent}  <hashTree/>\n`;
+  }
+
+  // Extractors for correlations sourced here
+  state.correlations.filter(c => c.sourceEntryId === e.id).forEach(c => {
+    if (c.location === 'cookie') {
+      s += `${indent}  <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Extract ${esc(c.name)}" enabled="true">\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.useHeaders">true</stringProp>\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.refname">${esc(c.name)}</stringProp>\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.regex">${esc(escapeRegex(c.sourceField) + '=([^;]+)')}</stringProp>\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.template">$1$</stringProp>\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.default">NOT_FOUND</stringProp>\n`;
+      s += `${indent}    <stringProp name="RegexExtractor.match_number">1</stringProp>\n`;
+      s += `${indent}  </RegexExtractor>\n`;
+      s += `${indent}  <hashTree/>\n`;
+    } else if (c.location === 'response_body_json') {
+      s += `${indent}  <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract ${esc(c.name)}" enabled="true">\n`;
+      s += `${indent}    <stringProp name="JSONPostProcessor.referenceNames">${esc(c.name)}</stringProp>\n`;
+      s += `${indent}    <stringProp name="JSONPostProcessor.jsonPathExprs">${esc(c.jsonPath)}</stringProp>\n`;
+      s += `${indent}    <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>\n`;
+      s += `${indent}    <stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>\n`;
+      s += `${indent}  </JSONPostProcessor>\n`;
+      s += `${indent}  <hashTree/>\n`;
+    }
+  });
+
+  // Status assertion
+  if (opts.assertStatus) {
+    s += `${indent}  <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status 2xx" enabled="true">\n`;
+    s += `${indent}    <collectionProp name="Asserion.test_strings"><stringProp name="49586">2..</stringProp></collectionProp>\n`;
+    s += `${indent}    <stringProp name="Assertion.custom_message"></stringProp>\n`;
+    s += `${indent}    <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>\n`;
+    s += `${indent}    <boolProp name="Assertion.assume_success">false</boolProp>\n`;
+    s += `${indent}    <intProp name="Assertion.test_type">1</intProp>\n`;
+    s += `${indent}  </ResponseAssertion>\n`;
+    s += `${indent}  <hashTree/>\n`;
+  }
+
+  s += `${indent}</hashTree>\n`;
+  return s;
+}
+
+// =====================================================================
+// CSV generation
+// =====================================================================
+function generateCsv() {
+  const enabled = state.parameters.filter(p => p.enabled);
+  if (!enabled.length) return null;
+  const header = enabled.map(p => p.name).join(',');
+  const sample = enabled.map(p => csvEscape(p.sampleValue)).join(',');
+  const placeholder = enabled.map(p => csvEscape(p.sampleValue + '_2')).join(',');
+  return header + '\n' + sample + '\n' + placeholder + '\n';
+}
+
+function csvEscape(v) {
+  if (v == null) return '';
+  const s = String(v);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+// =====================================================================
+// Preview & download
+// =====================================================================
+let previewState = { jmx: '', csv: null, tab: 'jmx' };
+
+function showPreview() {
+  if (!state.selected.size) { toast('No requests selected', 'err'); return; }
+  previewState.jmx = generateJmx();
+  previewState.csv = generateCsv();
+  previewState.tab = 'jmx';
+  document.getElementById('previewMeta').textContent = previewState.csv
+    ? 'Two files will be downloaded: plan.jmx and data.csv. Place them in the same folder.'
+    : 'One file will be downloaded: plan.jmx';
+  document.getElementById('tabCsv').style.display = previewState.csv ? '' : 'none';
+  switchPreviewTab('jmx');
+  document.getElementById('previewModal').classList.add('show');
+  setStep(4);
+}
+
+function switchPreviewTab(t) {
+  previewState.tab = t;
+  document.getElementById('tabJmx').style.background = t === 'jmx' ? 'var(--bg-3)' : 'var(--surface)';
+  document.getElementById('tabCsv').style.background = t === 'csv' ? 'var(--bg-3)' : 'var(--surface)';
+  document.getElementById('previewBox').value = t === 'jmx' ? previewState.jmx : (previewState.csv || '');
+}
+
+function copyCurrent() {
+  const ta = document.getElementById('previewBox');
+  ta.select();
+  document.execCommand('copy');
+  toast('Copied ' + (previewState.tab === 'jmx' ? 'JMX' : 'CSV') + ' to clipboard', 'ok');
+}
+
+function generateAndDownload() {
+  if (!state.selected.size) { toast('No requests selected', 'err'); return; }
+  const jmx = generateJmx();
+  const csv = generateCsv();
+  const baseName = (document.getElementById('planName').value.trim() || 'lpt-plan')
+    .replace(/[^\w\-]+/g, '_').toLowerCase();
+  downloadFile(jmx, baseName + '.jmx', 'application/xml');
+  if (csv) {
+    setTimeout(() => downloadFile(csv, 'data.csv', 'text/csv'), 250);
+    toast(`Downloaded ${baseName}.jmx + data.csv`, 'ok');
+  } else {
+    toast(`Downloaded ${baseName}.jmx`, 'ok');
+  }
+  setStep(4);
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function resetApp() {
+  if (!confirm('Discard current capture and load a different HAR?')) return;
+  state.har = null;
+  state.entries = [];
+  state.pages = [];
+  state.transactions = [];
+  state.parameters = [];
+  state.correlations = [];
+  state.udv = [];
+  state.selected = new Set();
+  document.getElementById('importView').style.display = '';
+  document.getElementById('workspace').classList.remove('active');
+  document.getElementById('previewBtn').style.display = 'none';
+  document.getElementById('generateBtn').style.display = 'none';
+  document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  setStep(1);
+}
+
+// =====================================================================
+// Helpers
+// =====================================================================
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function truncate(s, n) { if (!s) return ''; return s.length > n ? s.slice(0, n) + '…' : s; }
+function sanitizeVarName(s) {
+  return String(s).replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '').replace(/^(\d)/, '_$1') || 'var';
+}
+
+let toastTimer;
+function toast(msg, kind) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (kind || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
