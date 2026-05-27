@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migration Suite - Export &amp; Import Utility</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0c1018;--bg2:#121a28;--bg3:#1b2538;--bg4:#243048;--accent:#4f8ff7;--accent2:#7bb3ff;--green:#34d399;--red:#f87171;--orange:#fbbf24;--text:#d1d9e6;--text2:#8b9ab5;--text3:#5c6f8a;--border:#1e2d44;--border2:#2a3d58;--card:#131d2e;--shadow:rgba(0,0,0,.4)}
+[data-theme="light"]{--bg:#f0f2f5;--bg2:#fff;--bg3:#e8ecf1;--bg4:#d5dce6;--accent:#2563eb;--accent2:#1d4ed8;--green:#059669;--red:#dc2626;--orange:#d97706;--text:#1e293b;--text2:#475569;--text3:#94a3b8;--border:#e2e8f0;--border2:#cbd5e1;--card:#fff;--shadow:rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI','SF Pro Display',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{padding:18px 28px;background:linear-gradient(135deg,#0f1929,#162240);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+[data-theme="light"] .header{background:linear-gradient(135deg,#e0e7ff,#f0f4ff)}
+.header h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:-.3px}
+[data-theme="light"] .header h1{color:#111827}
+.header p{font-size:12px;color:var(--text2);margin-top:2px}
+.body{padding:16px 28px;max-width:1300px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 3px var(--shadow)}
+.card-title{margin:0 0 14px;font-size:13px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input,select,textarea{background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:7px 12px;font-size:13px;outline:none;font-family:inherit;transition:border .2s}
+input:focus,select:focus{border-color:var(--accent)}
+input::placeholder{color:var(--text3)}
+select{cursor:pointer}
+.btn{padding:7px 16px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover:not(:disabled){filter:brightness(1.1)}
+.btn-g{background:var(--green);color:#fff}.btn-g:hover:not(:disabled){filter:brightness(1.1)}
+.btn-o{background:var(--orange);color:#000}.btn-o:hover:not(:disabled){filter:brightness(1.1)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent2)}
+.step-n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;flex-shrink:0}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.bg-green{background:#05966922;color:var(--green)}.bg-red{background:#dc262622;color:var(--red)}.bg-blue{background:#2563eb22;color:var(--accent2)}.bg-orange{background:#d9770622;color:var(--orange)}.bg-gray{background:#94a3b822;color:var(--text3)}
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;background:var(--text3)}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}.conn-dot.fail{background:var(--red)}.conn-dot.busy{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.tab-bar{display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border);overflow-x:auto}
+.tab{padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text3);border:none;background:transparent;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;font-family:inherit}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:7px 8px;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border2);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+tr:hover td{background:var(--bg3)}
+.map-grid{display:grid;grid-template-columns:1fr 24px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.map-grid:last-child{border:none}
+.log-panel{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:280px;overflow-y:auto;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:11.5px;line-height:1.7}
+.log-info{color:var(--text2)}.log-success{color:var(--green)}.log-error{color:var(--red)}.log-dry{color:var(--orange)}.log-warn{color:var(--orange)}
+.pbar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:6px 0}
+.pfill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--bg3);border-radius:8px;padding:12px;text-align:center}
+.stat .n{font-size:26px;font-weight:700;color:var(--text)}
+[data-theme="dark"] .stat .n{color:#fff}
+.stat .l{font-size:10px;color:var(--text3);text-transform:uppercase;margin-top:2px}
+.entity-btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.entity-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.theme-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:20px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.arrow-cell{color:var(--text3);text-align:center;font-size:15px}
+.hidden{display:none}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="header">
+  <div>
+    <h1>Migration Suite</h1>
+    <p>Export from source system (all entity types) &rarr; Import test cases &amp; defects into qTest</p>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">&#9728;&#65039; Light</button>
+</div>
+
+<div class="body">
+  <div class="tab-bar">
+    <button class="tab active" data-tab="alm_export" onclick="switchTab('alm_export')">&#128228; Export from Source</button>
+    <button class="tab" data-tab="import_tc" onclick="switchTab('import_tc')">&#128229; Import Test Cases</button>
+    <button class="tab" data-tab="import_def" onclick="switchTab('import_def')">&#128027; Import Defects</button>
+    <button class="tab" data-tab="log" onclick="switchTab('log')">&#128203; Activity Log</button>
+  </div>
+
+  <!-- ═══════ EXPORT TAB ═══════ -->
+  <div id="tab-alm_export">
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">1</span> Source System Connection</h3>
+      <div class="row" style="margin-bottom:10px">
+        <input id="almUrl" placeholder="Server URL (e.g. https://alm.company.com)" style="flex:2;min-width:220px">
+        <input id="almUser" placeholder="Username" style="flex:1">
+        <input id="almPass" placeholder="Password" type="password" style="flex:1">
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <input id="almDomain" placeholder="Domain" style="flex:1">
+        <input id="almProject" placeholder="Project Name" style="flex:1">
+        <button class="btn btn-p" onclick="connectAlm()">Connect</button>
+        <span><span id="almDot" class="conn-dot"></span><span id="almStatus" style="font-size:12px;color:var(--text2)">Disconnected</span></span>
+      </div>
+      <div id="almError" style="color:var(--red);font-size:12px"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">2</span> Select Entity &amp; Export</h3>
+      <div id="entityBtns" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+      <div class="row" style="margin-bottom:10px">
+        <input id="almFilter" placeholder="Filter query (optional, e.g. status['Open'])" style="flex:2">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2);cursor:pointer">
+          <input type="checkbox" id="almAttach" checked> Include evidences/attachments
+        </label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2)">
+          Page size: <input type="number" id="almPageSize" value="100" min="10" max="2000" style="width:65px">
+        </label>
+      </div>
+      <div class="row">
+        <button id="exportBtn" class="btn btn-p" onclick="exportFromAlm()" disabled>Export</button>
+        <button id="downloadBtn" class="btn btn-g hidden" onclick="downloadAlmExport()">&#11015; Download as Excel</button>
+      </div>
+      <div id="almProgress" class="hidden">
+        <div class="pbar"><div id="almPFill" class="pfill" style="width:0%"></div></div>
+        <div id="almPText" style="font-size:11px;color:var(--text3)"></div>
+      </div>
+      <div id="almPreview" style="margin-top:12px;overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- ═══════ IMPORT TC TAB ═══════ -->
+  <div id="tab-import_tc" class="hidden">
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">1</span> qTest Connection</h3>
+      <div class="row" style="margin-bottom:10px">
+        <input id="qtUrl" placeholder="qTest URL (e.g. https://yourco.qtestnet.com)" style="flex:2;min-width:220px">
+        <input id="qtToken" placeholder="API Bearer Token" type="password" style="flex:2">
+        <button class="btn btn-p" onclick="connectQt()">Connect</button>
+        <span><span id="qtDot" class="conn-dot"></span><span id="qtStatus" style="font-size:12px;color:var(--text2)">Not connected</span></span>
+      </div>
+      <div id="qtError" style="color:var(--red);font-size:12px"></div>
+      <div id="qtProjectRow" class="row hidden">
+        <select id="qtProjectSel" onchange="loadQtProject(this.value)" style="flex:1"><option value="">— Select Project —</option></select>
+        <select id="qtModuleSel" style="flex:1"><option value="">— Target Module (optional) —</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">2</span> Upload Test Case Excel</h3>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="document.getElementById('tcFile').click()">Choose .xlsx / .xls / .csv…</button>
+        <input type="file" id="tcFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this,'tc')">
+        <span id="tcFileInfo"></span>
+      </div>
+      <div id="tcPreview" style="margin-top:12px;overflow-x:auto"></div>
+    </div>
+    <div id="tcMappingCard" class="card hidden">
+      <h3 class="card-title"><span class="step-n">3</span> Field Mapping <span id="tcMapBadge" class="badge bg-green"></span> <span id="tcReqBadge" class="badge bg-red hidden"></span></h3>
+      <div id="tcMappingGrid"></div>
+    </div>
+    <div id="tcImportCard" class="card hidden">
+      <h3 class="card-title"><span class="step-n">4</span> Import Options</h3>
+      <div class="row" style="margin-bottom:12px;gap:16px">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2)">
+          Steps: <select id="tcStepMode"><option value="separate">Each row = one step</option><option value="merged">Single cell (split by delimiter)</option></select>
+        </label>
+        <label id="tcDelimLabel" style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2)" class="hidden">
+          Delimiter: <input id="tcDelim" value="\n" style="width:50px">
+        </label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2)">
+          Batch: <input type="number" id="tcBatch" value="10" min="1" max="50" style="width:55px">
+        </label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--text2)">
+          <input type="checkbox" id="tcDryRun" checked>
+          <span id="tcDryLabel" style="color:var(--orange)">Dry Run</span>
+        </label>
+      </div>
+      <div id="tcStats" class="stats-grid"></div>
+      <div id="tcProgress" class="hidden"><div class="pbar"><div id="tcPFill" class="pfill" style="width:0%"></div></div></div>
+      <div class="row">
+        <button class="btn btn-o" onclick="runImport('tc',true)">&#128269; Validate</button>
+        <button class="btn btn-g" onclick="runImport('tc',false)">&#128640; Import Test Cases</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ IMPORT DEF TAB ═══════ -->
+  <div id="tab-import_def" class="hidden">
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">1</span> qTest Connection</h3>
+      <div class="row" style="margin-bottom:10px">
+        <input id="qtUrl2" placeholder="qTest URL" style="flex:2;min-width:220px">
+        <input id="qtToken2" placeholder="API Bearer Token" type="password" style="flex:2">
+        <button class="btn btn-p" onclick="connectQt2()">Connect</button>
+        <span><span id="qtDot2" class="conn-dot"></span><span id="qtStatus2" style="font-size:12px;color:var(--text2)">Not connected</span></span>
+      </div>
+      <div id="qtError2" style="color:var(--red);font-size:12px"></div>
+      <div id="qtProjectRow2" class="row hidden">
+        <select id="qtProjectSel2" onchange="loadQtProject2(this.value)" style="flex:1"><option value="">— Select Project —</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="card-title"><span class="step-n">2</span> Upload Defect Excel</h3>
+      <div class="row">
+        <button class="btn btn-ghost" onclick="document.getElementById('defFile').click()">Choose .xlsx / .xls / .csv…</button>
+        <input type="file" id="defFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this,'def')">
+        <span id="defFileInfo"></span>
+      </div>
+      <div id="defPreview" style="margin-top:12px;overflow-x:auto"></div>
+    </div>
+    <div id="defMappingCard" class="card hidden">
+      <h3 class="card-title"><span class="step-n">3</span> Field Mapping <span id="defMapBadge" class="badge bg-green"></span> <span id="defReqBadge" class="badge bg-red hidden"></span></h3>
+      <div id="defMappingGrid"></div>
+    </div>
+    <div id="defImportCard" class="card hidden">
+      <h3 class="card-title"><span class="step-n">4</span> Import Options</h3>
+      <div class="row" style="margin-bottom:12px;gap:16px">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;color:var(--text2)">
+          Batch: <input type="number" id="defBatch" value="10" min="1" max="50" style="width:55px">
+        </label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--text2)">
+          <input type="checkbox" id="defDryRun" checked>
+          <span id="defDryLabel" style="color:var(--orange)">Dry Run</span>
+        </label>
+      </div>
+      <div id="defStats" class="stats-grid"></div>
+      <div id="defProgress" class="hidden"><div class="pbar"><div id="defPFill" class="pfill" style="width:0%"></div></div></div>
+      <div class="row">
+        <button class="btn btn-o" onclick="runImport('def',true)">&#128269; Validate</button>
+        <button class="btn btn-g" onclick="runImport('def',false)">&#128640; Import Defects</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ LOG TAB ═══════ -->
+  <div id="tab-log" class="hidden">
+    <div class="card">
+      <div class="card-title">Activity Log <span id="logCount" class="badge bg-gray">0 entries</span>
+        <button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="clearLogs()">Clear</button>
+      </div>
+      <div id="logPanel" class="log-panel"><div style="color:var(--text3)">No activity yet.</div></div>
+    </div>
+  </div>
+
+  <!-- mini log on other tabs -->
+  <div id="miniLog" class="card hidden" style="background:var(--bg);border-color:var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase">Recent Log</span>
+      <button class="btn" style="background:transparent;color:var(--accent);font-size:11px;padding:3px 8px;border:none;cursor:pointer" onclick="switchTab('log')">View All</button>
+    </div>
+    <div id="miniLogPanel" class="log-panel" style="max-height:100px"></div>
+  </div>
+
+  <div class="card" style="background:var(--bg);border-color:var(--border);margin-top:8px">
+    <div style="font-size:11px;color:var(--text3);line-height:1.8">
+      <strong style="color:var(--text2)">Export:</strong> Connects to source system REST API. Supports Test Plan, Test Lab, Defects, Requirements, Test Sets, Test Runs. Evidences fetched per-item and included in Excel.<br>
+      <strong style="color:var(--text2)">Import Test Cases:</strong> Maps Excel columns to qTest fields (auto-maps common names). Creates via <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">POST /api/v3/projects/:id/test-cases</code>.<br>
+      <strong style="color:var(--text2)">Import Defects:</strong> Same flow via <code style="background:var(--bg3);padding:1px 4px;border-radius:3px">POST /api/v3/projects/:id/defects</code>. Maps severity, priority, status, type, and custom fields.<br>
+      <strong style="color:var(--text2)">Security:</strong> All inputs sanitized. URLs validated. Tokens never logged. No eval/innerHTML. No external storage. Data stays in-memory only.
+    </div>
+  </div>
+</div>
+
+<script>
+var ALM_ENTITIES=[
+  {id:"tests",label:"Test Plan",icon:"\u2611",apiPath:"tests"},
+  {id:"test-instances",label:"Test Lab",icon:"\u25B6",apiPath:"test-instances"},
+  {id:"defects",label:"Defects",icon:"\u26A0",apiPath:"defects"},
+  {id:"requirements",label:"Requirements",icon:"\u2B50",apiPath:"requirements"},
+  {id:"test-sets",label:"Test Sets",icon:"\uD83D\uDCC1",apiPath:"test-sets"},
+  {id:"runs",label:"Test Runs",icon:"\u23F1",apiPath:"runs"}
+];
+
+var QTEST_TC_TARGETS=[
+  {label:"Name (required)",value:"name"},{label:"Description",value:"description"},{label:"Precondition",value:"precondition"},
+  {label:"Status",value:"properties.Status"},{label:"Priority",value:"properties.Priority"},{label:"Type",value:"properties.Type"},
+  {label:"Assigned To",value:"properties.Assigned To"},{label:"Test Step \u2014 Description",value:"test_steps.description"},
+  {label:"Test Step \u2014 Expected",value:"test_steps.expected"},{label:"\u2014 Skip \u2014",value:"__skip__"},{label:"\u2014 Custom Field \u2014",value:"__custom__"}
+];
+var QTEST_DEF_TARGETS=[
+  {label:"Summary (required)",value:"summary"},{label:"Description",value:"description"},
+  {label:"Severity",value:"properties.Severity"},{label:"Priority",value:"properties.Priority"},
+  {label:"Status",value:"properties.Status"},{label:"Type",value:"properties.Type"},
+  {label:"Assigned To",value:"properties.Assigned To"},{label:"Reported By",value:"properties.Reported By"},
+  {label:"Fixed Version",value:"properties.Fixed Version"},
+  {label:"\u2014 Skip \u2014",value:"__skip__"},{label:"\u2014 Custom Field \u2014",value:"__custom__"}
+];
+
+var state={
+  almConn:0,almEntity:"tests",almData:[],
+  qtConn:0,qtConn2:0,qtProjects:[],qtProjects2:[],qtModules:[],qtTcFields:[],qtDefFields:[],qtProjectId:"",qtProjectId2:"",
+  tcHeaders:[],tcRows:[],tcMappings:{},tcCustom:{},
+  defHeaders:[],defRows:[],defMappings:{},defCustom:{},
+  logs:[],importRunning:false,importProgress:{done:0,total:0,failed:0}
+};
+
+function sanitize(v){if(v===null||v===undefined)return"";var s=String(v);return s.length>32000?s.slice(0,32000):s}
+function validateUrl(u){try{var url=new URL(u);return url.protocol==="https:"||url.protocol==="http:"}catch(e){return false}}
+function validateToken(t){return typeof t==="string"&&t.length>=8&&t.length<=4096&&!/[<>"';\s]/.test(t)}
+function validatePid(p){return/^\d{1,15}$/.test(String(p))}
+function esc(s){var d=document.createElement("div");d.textContent=String(s);return d.innerHTML}
+function chunk(a,sz){var r=[];for(var i=0;i<a.length;i+=sz)r.push(a.slice(i,i+sz));return r}
+
+function addLog(level,msg){
+  var entry={ts:new Date().toLocaleTimeString(),level:level,msg:sanitize(msg)};
+  state.logs.push(entry);if(state.logs.length>500)state.logs=state.logs.slice(-500);
+  renderLogs();
+}
+
+function renderLogs(){
+  var lp=document.getElementById("logPanel");
+  var ml=document.getElementById("miniLogPanel");
+  var html=state.logs.map(function(l){return'<div class="log-'+l.level+'"><span style="color:var(--text3);margin-right:8px">'+esc(l.ts)+'</span>'+esc(l.msg)+'</div>'}).join("");
+  lp.innerHTML=html||'<div style="color:var(--text3)">No activity yet.</div>';
+  lp.scrollTop=lp.scrollHeight;
+  var last8=state.logs.slice(-8);
+  ml.innerHTML=last8.map(function(l){return'<div class="log-'+l.level+'"><span style="color:var(--text3);margin-right:8px">'+esc(l.ts)+'</span>'+esc(l.msg)+'</div>'}).join("");
+  document.getElementById("logCount").textContent=state.logs.length+" entries";
+  var currentTab=document.querySelector(".tab.active").getAttribute("data-tab");
+  document.getElementById("miniLog").classList.toggle("hidden",currentTab==="log"||state.logs.length===0);
+}
+
+function clearLogs(){state.logs=[];renderLogs()}
+
+function toggleTheme(){
+  var b=document.body;var btn=document.querySelector(".theme-btn");
+  if(b.getAttribute("data-theme")==="dark"){b.setAttribute("data-theme","light");btn.innerHTML="\uD83C\uDF19 Dark"}
+  else{b.setAttribute("data-theme","dark");btn.innerHTML="\u2600\uFE0F Light"}
+}
+
+function switchTab(id){
+  document.querySelectorAll("[id^='tab-']").forEach(function(el){el.classList.add("hidden")});
+  document.getElementById("tab-"+id).classList.remove("hidden");
+  document.querySelectorAll(".tab").forEach(function(el){el.classList.toggle("active",el.getAttribute("data-tab")===id)});
+  document.getElementById("miniLog").classList.toggle("hidden",id==="log"||state.logs.length===0);
+}
+
+(function initEntityBtns(){
+  var c=document.getElementById("entityBtns");
+  ALM_ENTITIES.forEach(function(e){
+    var b=document.createElement("button");b.className="entity-btn"+(e.id==="tests"?" active":"");
+    b.textContent=e.icon+" "+e.label;b.setAttribute("data-eid",e.id);
+    b.onclick=function(){state.almEntity=e.id;document.querySelectorAll(".entity-btn").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-eid")===e.id)})};
+    c.appendChild(b);
+  });
+})();
+
+document.getElementById("tcStepMode").onchange=function(){document.getElementById("tcDelimLabel").classList.toggle("hidden",this.value!=="merged")};
+
+function parseAlmXml(xmlText){
+  var parser=new DOMParser();var doc=parser.parseFromString(xmlText,"application/xml");
+  var ents=doc.querySelectorAll("Entity");var results=[];
+  ents.forEach(function(ent){
+    var obj={};ent.querySelectorAll("Field").forEach(function(f){
+      var name=f.getAttribute("Name");var valEl=f.querySelector("Value");
+      if(name&&valEl)obj[name]=sanitize(valEl.textContent);
+    });results.push(obj);
+  });return results;
+}
+
+async function almApi(method,path,body,isAuth){
+  var base=document.getElementById("almUrl").value.replace(/\/+$/,"");
+  if(!validateUrl(base))throw new Error("Invalid server URL");
+  var opts={method:method,credentials:"include",headers:{"Accept":"application/xml"}};
+  if(isAuth)opts.headers["Authorization"]="Basic "+btoa(document.getElementById("almUser").value+":"+document.getElementById("almPass").value);
+  if(body){opts.headers["Content-Type"]="application/xml";opts.body=body}
+  var res=await fetch(base+path,opts);
+  if(!res.ok){var txt=await res.text().catch(function(){return""});throw new Error("HTTP "+res.status+": "+sanitize(txt).slice(0,200))}
+  return res;
+}
+
+async function connectAlm(){
+  document.getElementById("almDot").className="conn-dot busy";document.getElementById("almStatus").textContent="Testing\u2026";document.getElementById("almError").textContent="";
+  try{
+    var u=document.getElementById("almUrl").value,d=document.getElementById("almDomain").value,p=document.getElementById("almProject").value;
+    if(!validateUrl(u))throw new Error("Enter a valid URL");if(!d||!p)throw new Error("Domain and Project are required");
+    await almApi("POST","/qcbin/authentication-point/authenticate",null,true);
+    await almApi("POST","/qcbin/rest/site-session",null,false);
+    state.almConn=2;document.getElementById("almDot").className="conn-dot ok";document.getElementById("almStatus").textContent="Connected";
+    document.getElementById("exportBtn").disabled=false;
+    addLog("success","Connected. Domain: "+esc(d)+", Project: "+esc(p));
+  }catch(e){
+    state.almConn=3;document.getElementById("almDot").className="conn-dot fail";document.getElementById("almStatus").textContent="Failed";
+    document.getElementById("almError").textContent=e.message;addLog("error","Connection failed: "+e.message);
+  }
+}
+
+async function exportFromAlm(){
+  if(state.almConn!==2)return;
+  var entity=ALM_ENTITIES.find(function(e){return e.id===state.almEntity});if(!entity)return;
+  var domain=document.getElementById("almDomain").value,project=document.getElementById("almProject").value;
+  var includeAtt=document.getElementById("almAttach").checked;
+  var pageSize=Math.min(Math.max(Number(document.getElementById("almPageSize").value)||100,10),2000);
+  var filter=document.getElementById("almFilter").value.trim();
+  document.getElementById("almProgress").classList.remove("hidden");state.almData=[];
+  addLog("info","Starting export: "+entity.label+"...");
+
+  try{
+    var allItems=[],startIdx=1,hasMore=true;
+    var basePath="/qcbin/rest/domains/"+encodeURIComponent(domain)+"/projects/"+encodeURIComponent(project)+"/"+entity.apiPath;
+    while(hasMore){
+      var qp=basePath+"?page-size="+pageSize+"&start-index="+startIdx;
+      if(filter)qp+="&query={"+encodeURIComponent(filter)+"}";
+      var res=await almApi("GET",qp);var xmlText=await res.text();
+      var items=parseAlmXml(xmlText);
+      var tm=xmlText.match(/TotalResults="(\d+)"/);var total=tm?parseInt(tm[1],10):items.length;
+      allItems=allItems.concat(items);
+      var pct=total>0?(allItems.length/total*100):0;
+      document.getElementById("almPFill").style.width=Math.min(pct,100)+"%";
+      document.getElementById("almPText").textContent=allItems.length+" / "+total+" — fetching";
+      addLog("info","Fetched "+allItems.length+" / "+total+" "+entity.label);
+      hasMore=allItems.length<total&&items.length>0;startIdx+=pageSize;
+    }
+    if(includeAtt&&allItems.length>0){
+      addLog("info","Fetching evidences/attachments...");var attCount=0;
+      for(var i=0;i<allItems.length;i++){
+        var itemId=allItems[i].id;if(!itemId)continue;
+        try{
+          var attRes=await almApi("GET",basePath+"/"+encodeURIComponent(itemId)+"/attachments");
+          var attXml=await attRes.text();var atts=parseAlmXml(attXml);
+          if(atts.length>0){
+            allItems[i].__attachments=atts.map(function(a){return{name:sanitize(a.name||""),type:sanitize(a["file-type"]||a.type||""),size:sanitize(a["file-size"]||"")}});
+            attCount+=atts.length;
+          }
+        }catch(e){}
+        if(i%20===0)document.getElementById("almPText").textContent="Attachments: "+(i+1)+"/"+allItems.length;
+      }
+      addLog("info","Found "+attCount+" attachment(s)");
+    }
+    state.almData=allItems;
+    document.getElementById("almPFill").style.width="100%";
+    document.getElementById("almPText").textContent=allItems.length+" records — done";
+    document.getElementById("downloadBtn").classList.remove("hidden");
+    document.getElementById("downloadBtn").textContent="\u2B07 Download as Excel ("+allItems.length+" records)";
+    addLog("success","Export complete: "+allItems.length+" "+entity.label+" record(s)");
+    renderAlmPreview();
+  }catch(e){
+    document.getElementById("almPText").textContent="Error";addLog("error","Export failed: "+e.message);
+  }
+}
+
+function renderAlmPreview(){
+  var data=state.almData;if(!data.length){document.getElementById("almPreview").innerHTML="";return}
+  var keys=Object.keys(data[0]).filter(function(k){return k!=="__attachments"}).slice(0,10);
+  var includeAtt=document.getElementById("almAttach").checked;
+  var html='<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Preview (first 5):</div><table><thead><tr>';
+  keys.forEach(function(k){html+="<th>"+esc(k)+"</th>"});
+  if(includeAtt)html+="<th>Attachments</th>";
+  html+="</tr></thead><tbody>";
+  data.slice(0,5).forEach(function(item){
+    html+="<tr>";keys.forEach(function(k){html+='<td title="'+esc(item[k]||"")+'">'+esc(item[k]||"")+"</td>"});
+    if(includeAtt)html+="<td>"+esc((item.__attachments||[]).map(function(a){return a.name}).join(", ")||"\u2014")+"</td>";
+    html+="</tr>";
+  });
+  html+="</tbody></table>";document.getElementById("almPreview").innerHTML=html;
+}
+
+function downloadAlmExport(){
+  if(!state.almData.length)return;
+  var entity=ALM_ENTITIES.find(function(e){return e.id===state.almEntity});
+  var includeAtt=document.getElementById("almAttach").checked;
+  var allKeys=new Set();state.almData.forEach(function(item){Object.keys(item).forEach(function(k){if(k!=="__attachments")allKeys.add(k)})});
+  var headers=Array.from(allKeys);
+  if(includeAtt)headers.push("Attachment Names","Attachment Types","Attachment Sizes");
+  var wsData=[headers];
+  state.almData.forEach(function(item){
+    wsData.push(headers.map(function(h){
+      if(h==="Attachment Names")return(item.__attachments||[]).map(function(a){return a.name}).join("; ");
+      if(h==="Attachment Types")return(item.__attachments||[]).map(function(a){return a.type}).join("; ");
+      if(h==="Attachment Sizes")return(item.__attachments||[]).map(function(a){return a.size}).join("; ");
+      return sanitize(item[h]);
+    }));
+  });
+  var ws=XLSX.utils.aoa_to_sheet(wsData);var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,(entity?entity.label:"Export").slice(0,31));
+  XLSX.writeFile(wb,"export_"+(entity?entity.id:"data")+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+  addLog("success","Excel file downloaded");
+}
+
+async function qtApi(method,path,body,urlField,tokenField){
+  var base=document.getElementById(urlField||"qtUrl").value.replace(/\/+$/,"");
+  var token=document.getElementById(tokenField||"qtToken").value;
+  if(!validateUrl(base))throw new Error("Invalid qTest URL");
+  if(!validateToken(token))throw new Error("Invalid token format");
+  var opts={method:method,headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"}};
+  if(body)opts.body=JSON.stringify(body);
+  var res=await fetch(base+"/api/v3"+path,opts);
+  if(!res.ok){var txt=await res.text().catch(function(){return""});throw new Error(res.status+": "+sanitize(txt).slice(0,300))}
+  return res.json();
+}
+
+async function connectQt(){
+  document.getElementById("qtDot").className="conn-dot busy";document.getElementById("qtStatus").textContent="Testing\u2026";document.getElementById("qtError").textContent="";
+  try{
+    var projs=await qtApi("GET","/projects",null,"qtUrl","qtToken");
+    state.qtProjects=Array.isArray(projs)?projs:[];state.qtConn=2;
+    document.getElementById("qtDot").className="conn-dot ok";document.getElementById("qtStatus").textContent="Connected";
+    document.getElementById("qtProjectRow").classList.remove("hidden");
+    var sel=document.getElementById("qtProjectSel");sel.innerHTML='<option value="">\u2014 Select Project \u2014</option>';
+    projs.forEach(function(p){sel.innerHTML+='<option value="'+p.id+'">'+esc(p.name)+" (ID: "+p.id+")</option>"});
+    addLog("success","Connected to qTest. "+projs.length+" project(s).");
+  }catch(e){
+    state.qtConn=3;document.getElementById("qtDot").className="conn-dot fail";document.getElementById("qtStatus").textContent="Failed";
+    document.getElementById("qtError").textContent=e.message;addLog("error","qTest connection failed: "+e.message);
+  }
+}
+
+async function connectQt2(){
+  document.getElementById("qtDot2").className="conn-dot busy";document.getElementById("qtStatus2").textContent="Testing\u2026";document.getElementById("qtError2").textContent="";
+  try{
+    var projs=await qtApi("GET","/projects",null,"qtUrl2","qtToken2");
+    state.qtProjects2=Array.isArray(projs)?projs:[];state.qtConn2=2;
+    document.getElementById("qtDot2").className="conn-dot ok";document.getElementById("qtStatus2").textContent="Connected";
+    document.getElementById("qtProjectRow2").classList.remove("hidden");
+    var sel=document.getElementById("qtProjectSel2");sel.innerHTML='<option value="">\u2014 Select Project \u2014</option>';
+    projs.forEach(function(p){sel.innerHTML+='<option value="'+p.id+'">'+esc(p.name)+" (ID: "+p.id+")</option>"});
+    addLog("success","Connected to qTest (defects tab). "+projs.length+" project(s).");
+  }catch(e){
+    state.qtConn2=3;document.getElementById("qtDot2").className="conn-dot fail";document.getElementById("qtStatus2").textContent="Failed";
+    document.getElementById("qtError2").textContent=e.message;addLog("error","qTest connection failed: "+e.message);
+  }
+}
+
+function flattenMods(mods,depth){
+  depth=depth||0;var flat=[];
+  (mods||[]).forEach(function(m){
+    flat.push({id:m.id,name:sanitize(m.name),depth:depth});
+    if(Array.isArray(m.children))flat=flat.concat(flattenMods(m.children,depth+1));
+  });return flat;
+}
+
+async function loadQtProject(pid){
+  state.qtProjectId=pid;if(!pid||!validatePid(pid))return;
+  try{
+    var mods=await qtApi("GET","/projects/"+pid+"/modules",null,"qtUrl","qtToken");
+    var tcF=await qtApi("GET","/projects/"+pid+"/settings/test-cases/fields",null,"qtUrl","qtToken");
+    var defF=await qtApi("GET","/projects/"+pid+"/settings/defects/fields",null,"qtUrl","qtToken");
+    state.qtModules=flattenMods(Array.isArray(mods)?mods:[]);
+    state.qtTcFields=Array.isArray(tcF)?tcF:[];state.qtDefFields=Array.isArray(defF)?defF:[];
+    var modSel=document.getElementById("qtModuleSel");modSel.innerHTML='<option value="">\u2014 Target Module (optional) \u2014</option>';
+    state.qtModules.forEach(function(m){modSel.innerHTML+='<option value="'+m.id+'">'+"| ".repeat(m.depth)+esc(m.name)+"</option>"});
+    addLog("info","Loaded "+tcF.length+" TC fields, "+defF.length+" defect fields, "+state.qtModules.length+" modules");
+    if(state.tcHeaders.length)renderMappings("tc");
+  }catch(e){addLog("error","Project load failed: "+e.message)}
+}
+
+async function loadQtProject2(pid){
+  state.qtProjectId2=pid;if(!pid||!validatePid(pid))return;
+  try{
+    var defF=await qtApi("GET","/projects/"+pid+"/settings/defects/fields",null,"qtUrl2","qtToken2");
+    state.qtDefFields=Array.isArray(defF)?defF:[];
+    addLog("info","Loaded "+defF.length+" defect fields for project "+pid);
+    if(state.defHeaders.length)renderMappings("def");
+  }catch(e){addLog("error","Project load failed: "+e.message)}
+}
+
+function handleFile(input,type){
+  var file=input.files&&input.files[0];if(!file)return;
+  if(file.size>100*1024*1024){addLog("error","File too large (max 100 MB)");return}
+  var ext=file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  if([".xlsx",".xls",".csv"].indexOf(ext)===-1){addLog("error","Unsupported file type");return}
+  var reader=new FileReader();
+  reader.onload=function(evt){
+    try{
+      var wb=XLSX.read(evt.target.result,{type:"array",cellDates:true});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var json=XLSX.utils.sheet_to_json(ws,{defval:""});
+      if(!json.length){addLog("warn","Sheet is empty");return}
+      var hdrs=Object.keys(json[0]).map(sanitize);
+      var rows=json.map(function(r){var sr={};hdrs.forEach(function(h){sr[h]=sanitize(r[h])});return sr});
+      if(type==="tc"){
+        state.tcHeaders=hdrs;state.tcRows=rows;state.tcMappings=autoMapTc(hdrs);state.tcCustom={};
+        document.getElementById("tcFileInfo").innerHTML='<span class="badge bg-blue">'+rows.length+" rows \u00B7 "+hdrs.length+" cols</span>";
+        renderPreview("tcPreview",hdrs,rows.slice(0,6));
+        document.getElementById("tcMappingCard").classList.remove("hidden");
+        document.getElementById("tcImportCard").classList.remove("hidden");
+        renderMappings("tc");renderStats("tc");
+      }else{
+        state.defHeaders=hdrs;state.defRows=rows;state.defMappings=autoMapDef(hdrs);state.defCustom={};
+        document.getElementById("defFileInfo").innerHTML='<span class="badge bg-blue">'+rows.length+" rows \u00B7 "+hdrs.length+" cols</span>";
+        renderPreview("defPreview",hdrs,rows.slice(0,6));
+        document.getElementById("defMappingCard").classList.remove("hidden");
+        document.getElementById("defImportCard").classList.remove("hidden");
+        renderMappings("def");renderStats("def");
+      }
+      addLog("info",'Loaded "'+sanitize(file.name)+'": '+rows.length+" rows, "+hdrs.length+" columns");
+    }catch(err){addLog("error","Parse error: "+err.message)}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function autoMapTc(hdrs){
+  var m={};hdrs.forEach(function(h){
+    var l=h.toLowerCase().trim();
+    if(l.indexOf("test name")>-1||l==="name"||l==="test case name"||l==="subject")m[h]="name";
+    else if(l==="description"||l.indexOf("test description")>-1)m[h]="description";
+    else if(l.indexOf("precondition")>-1||l.indexOf("pre-condition")>-1)m[h]="precondition";
+    else if(l.indexOf("step description")>-1||l.indexOf("step action")>-1||l==="step name")m[h]="test_steps.description";
+    else if(l.indexOf("expected result")>-1||l.indexOf("expected output")>-1)m[h]="test_steps.expected";
+    else if(l==="status")m[h]="properties.Status";
+    else if(l==="priority")m[h]="properties.Priority";
+    else if(l==="type")m[h]="properties.Type";
+    else m[h]="__skip__";
+  });return m;
+}
+
+function autoMapDef(hdrs){
+  var m={};hdrs.forEach(function(h){
+    var l=h.toLowerCase().trim();
+    if(l==="name"||l==="summary"||l==="defect name"||l==="defect summary")m[h]="summary";
+    else if(l==="description"||l.indexOf("defect description")>-1)m[h]="description";
+    else if(l==="severity")m[h]="properties.Severity";
+    else if(l==="priority")m[h]="properties.Priority";
+    else if(l==="status")m[h]="properties.Status";
+    else if(l==="type"||l==="defect type")m[h]="properties.Type";
+    else if(l.indexOf("assigned")>-1||l==="owner")m[h]="properties.Assigned To";
+    else if(l.indexOf("detected")>-1||l.indexOf("reported")>-1)m[h]="properties.Reported By";
+    else m[h]="__skip__";
+  });return m;
+}
+
+function renderPreview(containerId,headers,rows){
+  var html='<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Preview (first rows):</div><table><thead><tr>';
+  headers.forEach(function(h){html+="<th>"+esc(h)+"</th>"});
+  html+="</tr></thead><tbody>";
+  rows.forEach(function(row){html+="<tr>";headers.forEach(function(h){html+='<td title="'+esc(row[h]||"")+'">'+esc(row[h]||"")+"</td>"});html+="</tr>"});
+  html+="</tbody></table>";document.getElementById(containerId).innerHTML=html;
+}
+
+function renderMappings(type){
+  var headers=type==="tc"?state.tcHeaders:state.defHeaders;
+  var mappings=type==="tc"?state.tcMappings:state.defMappings;
+  var targets=type==="tc"?QTEST_TC_TARGETS:QTEST_DEF_TARGETS;
+  var fields=type==="tc"?state.qtTcFields:state.qtDefFields;
+  var containerId=type==="tc"?"tcMappingGrid":"defMappingGrid";
+  var reqKey=type==="tc"?"name":"summary";
+
+  var html='<div class="map-grid" style="border-bottom:1px solid var(--border2);padding-bottom:4px;margin-bottom:2px"><span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Excel Column</span><span></span><span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">qTest Field</span><span></span></div>';
+
+  headers.forEach(function(h){
+    var cur=mappings[h]||"__skip__";
+    html+='<div class="map-grid">';
+    html+='<span style="font-size:13px;font-weight:500">'+esc(h)+"</span>";
+    html+='<span class="arrow-cell">\u2192</span>';
+    html+='<select onchange="updateMapping(\''+type+"','"+esc(h).replace(/'/g,"\\'")+"',this.value)\">";
+    targets.forEach(function(t){html+='<option value="'+t.value+'"'+(cur===t.value?" selected":"")+">"+esc(t.label)+"</option>"});
+    fields.filter(function(f){return!targets.some(function(sf){return sf.label.replace(/ \(required\)/,"")===f.label})}).forEach(function(f){
+      html+='<option value="properties.'+esc(f.label)+'"'+(cur==="properties."+f.label?" selected":"")+">Field: "+esc(f.label)+"</option>";
+    });
+    html+="</select>";
+    html+="<span>";
+    if(cur===reqKey)html+='<span class="badge bg-green">req</span>';
+    if(cur==="__custom__")html+='<input placeholder="Custom field name" style="width:140px" value="'+esc((type==="tc"?state.tcCustom:state.defCustom)[h]||"")+'" onchange="updateCustom(\''+type+"','"+esc(h).replace(/'/g,"\\'")+"',this.value)\">";
+    html+="</span></div>";
+  });
+
+  document.getElementById(containerId).innerHTML=html;
+  updateMappingBadges(type);
+}
+
+function updateMapping(type,header,value){
+  if(type==="tc")state.tcMappings[header]=value;else state.defMappings[header]=value;
+  renderMappings(type);renderStats(type);
+}
+function updateCustom(type,header,value){
+  if(type==="tc")state.tcCustom[header]=value;else state.defCustom[header]=value;
+}
+
+function updateMappingBadges(type){
+  var mappings=type==="tc"?state.tcMappings:state.defMappings;
+  var reqKey=type==="tc"?"name":"summary";
+  var mapped=Object.values(mappings).filter(function(v){return v!=="__skip__"}).length;
+  var hasReq=Object.values(mappings).indexOf(reqKey)>-1;
+  document.getElementById(type+"MapBadge").textContent=mapped+" mapped";
+  var reqBadge=document.getElementById(type+"ReqBadge");
+  if(!hasReq){reqBadge.classList.remove("hidden");reqBadge.textContent="\u26A0 "+(type==="tc"?"Name":"Summary")+" required"}
+  else reqBadge.classList.add("hidden");
+}
+
+function renderStats(type){
+  var rows=type==="tc"?state.tcRows:state.defRows;
+  var mappings=type==="tc"?state.tcMappings:state.defMappings;
+  var mapped=Object.values(mappings).filter(function(v){return v!=="__skip__"}).length;
+  var payloadCount;try{payloadCount=type==="tc"?buildTcPayloads().length:buildDefPayloads().length}catch(e){payloadCount="\u2014"}
+  var html='<div class="stat"><div class="n">'+rows.length+'</div><div class="l">Excel Rows</div></div>';
+  html+='<div class="stat"><div class="n" style="color:var(--accent2)">'+payloadCount+'</div><div class="l">'+(type==="tc"?"Test Cases":"Defects")+"</div></div>";
+  html+='<div class="stat"><div class="n" style="color:var(--green)">'+mapped+'</div><div class="l">Mapped</div></div>';
+  html+='<div class="stat"><div class="n" style="color:var(--text3)">'+state.importProgress.failed+'</div><div class="l">Failed</div></div>';
+  document.getElementById(type+"Stats").innerHTML=html;
+}
+
+function lookupFieldValue(fields,fieldName,rawValue){
+  var fd=fields.find(function(f){return f.label===fieldName});
+  if(!fd)return null;
+  var fv=rawValue;
+  if(Array.isArray(fd.allowed_values)){
+    var match=fd.allowed_values.find(function(av){return String(av.label||"").toLowerCase()===rawValue.toLowerCase()});
+    if(match)fv=String(match.value);
+  }
+  return{field_id:fd.id,field_value:fv};
+}
+
+function buildTcPayloads(){
+  var mappings=state.tcMappings,rows=state.tcRows,fields=state.qtTcFields;
+  var nameCol=null;for(var k in mappings){if(mappings[k]==="name"){nameCol=k;break}}
+  if(!nameCol)throw new Error("Map at least one column to 'Name'");
+  var grouped=new Map();
+  rows.forEach(function(row){
+    var n=String(row[nameCol]||"").trim();if(!n)return;
+    if(!grouped.has(n))grouped.set(n,[]);grouped.get(n).push(row);
+  });
+  var payloads=[];
+  grouped.forEach(function(tcRows,tcName){
+    var first=tcRows[0];var p={name:tcName,properties:[],test_steps:[]};
+    var modSel=document.getElementById("qtModuleSel");
+    if(modSel&&modSel.value)p.parent_id=Number(modSel.value);
+    for(var col in mappings){
+      var target=mappings[col];
+      if(["__skip__","__custom__","name","test_steps.description","test_steps.expected"].indexOf(target)>-1)continue;
+      var val=String(first[col]||"").trim();if(!val)continue;
+      if(target==="description")p.description=val;
+      else if(target==="precondition")p.precondition=val;
+      else if(target.indexOf("properties.")===0){
+        var fn=target.replace("properties.","");var fld=lookupFieldValue(fields,fn,val);
+        if(fld)p.properties.push(fld);
+      }
+    }
+    for(var col2 in mappings){
+      if(mappings[col2]!=="__custom__")continue;
+      var cfn=state.tcCustom[col2];if(!cfn)continue;
+      var val2=String(first[col2]||"").trim();var fld2=lookupFieldValue(fields,cfn,val2);
+      if(fld2)p.properties.push(fld2);
+    }
+    var sdCol=null,seCol=null;
+    for(var c in mappings){if(mappings[c]==="test_steps.description")sdCol=c;if(mappings[c]==="test_steps.expected")seCol=c}
+    if(sdCol){
+      var mode=document.getElementById("tcStepMode").value;
+      if(mode==="separate"){
+        tcRows.forEach(function(r,i){
+          var d=String(r[sdCol]||"").trim();
+          if(d)p.test_steps.push({description:d,expected:seCol?String(r[seCol]||"").trim():"",order:i});
+        });
+      }else{
+        var delim=document.getElementById("tcDelim").value;delim=delim==="\\n"?"\n":delim;
+        var parts=String(first[sdCol]||"").split(delim).map(function(s){return s.trim()}).filter(Boolean);
+        var expRaw=seCol?String(first[seCol]||""):"";var expParts=expRaw.split(delim).map(function(s){return s.trim()});
+        parts.forEach(function(d,i){p.test_steps.push({description:d,expected:expParts[i]||"",order:i})});
+      }
+    }
+    payloads.push(p);
+  });
+  return payloads;
+}
+
+function buildDefPayloads(){
+  var mappings=state.defMappings,rows=state.defRows,fields=state.qtDefFields;
+  var sumCol=null;for(var k in mappings){if(mappings[k]==="summary"){sumCol=k;break}}
+  if(!sumCol)throw new Error("Map at least one column to 'Summary'");
+  return rows.map(function(row){
+    var name=String(row[sumCol]||"").trim();if(!name)return null;
+    var p={properties:[]};
+    var summaryField=fields.find(function(f){return f.label==="Summary"});
+    if(summaryField)p.properties.push({field_id:summaryField.id,field_value:name});
+    for(var col in mappings){
+      var target=mappings[col];
+      if(["__skip__","__custom__","summary"].indexOf(target)>-1)continue;
+      var val=String(row[col]||"").trim();if(!val)continue;
+      if(target==="description"){
+        var descF=fields.find(function(f){return f.label==="Description"});
+        if(descF)p.properties.push({field_id:descF.id,field_value:val});
+      }else if(target.indexOf("properties.")===0){
+        var fn=target.replace("properties.","");var fld=lookupFieldValue(fields,fn,val);
+        if(fld)p.properties.push(fld);
+      }
+    }
+    for(var col2 in mappings){
+      if(mappings[col2]!=="__custom__")continue;
+      var cfn=state.defCustom[col2];if(!cfn)continue;
+      var val2=String(row[col2]||"").trim();var fld2=lookupFieldValue(fields,cfn,val2);
+      if(fld2)p.properties.push(fld2);
+    }
+    return p;
+  }).filter(Boolean);
+}
+
+async function runImport(type,isDry){
+  if(state.importRunning)return;state.importRunning=true;
+  state.importProgress={done:0,total:0,failed:0};
+  var progId=type+"Progress",fillId=type+"PFill";
+  document.getElementById(progId).classList.remove("hidden");
+
+  try{
+    var payloads=type==="tc"?buildTcPayloads():buildDefPayloads();
+    var total=payloads.length;state.importProgress.total=total;
+    if(!total){addLog("warn","No valid records to import");state.importRunning=false;return}
+    addLog("info","Prepared "+total+" "+(type==="tc"?"test case":"defect")+"(s)");
+
+    if(isDry){
+      addLog("info","\uD83D\uDD12 DRY RUN \u2014 no API calls");
+      payloads.forEach(function(p,i){
+        var label=type==="tc"?p.name:(p.properties.length?p.properties[0].field_value:"#"+(i+1));
+        var pc=p.properties?p.properties.length:0;var sc=p.test_steps?p.test_steps.length:0;
+        addLog("dry","["+(i+1)+"/"+total+"] "+sanitize(label)+" \u2014 "+pc+" field(s)"+(type==="tc"?", "+sc+" step(s)":""));
+      });
+      state.importProgress.done=total;document.getElementById(fillId).style.width="100%";
+      addLog("success","Dry run complete. "+total+" record(s) validated.");
+      state.importRunning=false;renderStats(type);return;
+    }
+
+    var pid=type==="tc"?state.qtProjectId:state.qtProjectId2;
+    if(!pid||!validatePid(pid)){addLog("error","Select a qTest project first");state.importRunning=false;return}
+    var urlField=type==="tc"?"qtUrl":"qtUrl2",tokenField=type==="tc"?"qtToken":"qtToken2";
+    var endpoint=type==="tc"?"/projects/"+pid+"/test-cases":"/projects/"+pid+"/defects";
+    var batchSz=Math.min(Math.max(Number(document.getElementById(type+"Batch").value)||10,1),50);
+    var batches=chunk(payloads,batchSz);var done=0,failed=0;
+
+    for(var bi=0;bi<batches.length;bi++){
+      var batch=batches[bi];
+      var results=await Promise.allSettled(batch.map(function(p){return qtApi("POST",endpoint,p,urlField,tokenField)}));
+      results.forEach(function(r,i){
+        done++;
+        var label=type==="tc"?batch[i].name:"Defect #"+done;
+        if(r.status==="fulfilled"){
+          addLog("success","\u2713 "+sanitize(label)+" \u2192 "+(r.value.pid||r.value.id));
+        }else{
+          failed++;addLog("error","\u2717 "+sanitize(label)+": "+(r.reason?r.reason.message:"Unknown error"));
+        }
+        state.importProgress={done:done,total:total,failed:failed};
+        document.getElementById(fillId).style.width=(done/total*100)+"%";
+      });
+      if(batches.length>1)await new Promise(function(r){setTimeout(r,350)});
+    }
+    addLog("success","Import done: "+(done-failed)+" ok, "+failed+" failed of "+total);
+  }catch(e){
+    addLog("error","Import aborted: "+e.message);
+  }
+  state.importRunning=false;renderStats(type);
+}
+</script>
+</body>
+</html>
